@@ -141,3 +141,11 @@ dist
 vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
 .vite/
+templates/*/node_modules/
+templates/*/.env
+templates/*/allure-report/
+templates/*/allure-results/
+templates/*/playwright-report/
+templates/*/test-results/
+templates/*/ortoni-report/
+templates/*/logs/

@@ -1,0 +1,50 @@
+{
+  "name": "playwrightframework",
+  "version": "1.0.0",
+  "description": "Production-ready Playwright automation framework for Demoblaze using TypeScript and POM.",
+  "main": "index.js",
+  "scripts": {
+    "test": "playwright test",
+    "test:headed": "playwright test --headed",
+    "test:chrome": "playwright test --project=chromium",
+    "test:mobile": "playwright test --project=mobile-chrome",
+    "test:mobile-app": "playwright test --project=mobile-app",
+    "test:api": "playwright test --project=api",
+    "test:report": "playwright show-report",
+    "report:allure": "allure generate --clean -o allure-report allure-results && allure open allure-report",
+    "typecheck": "tsc --noEmit",
+    "clean:logs": "node -e \"const fs=require('fs');['logs'].forEach(d=>{if(fs.existsSync(d))fs.rmSync(d,{recursive:true,force:true})})\""
+  },
+  "keywords": [
+    "playwright",
+    "automation",
+    "typescript",
+    "pom",
+    "demoblaze"
+  ],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "dependencies": {
+    "openai": "^4.73.0"
+  },
+  "devDependencies": {
+    "@axe-core/playwright": "^4.12.1",
+    "@faker-js/faker": "^10.5.0",
+    "@playwright/test": "^1.61.1",
+    "@types/node": "^26.0.1",
+    "allure-commandline": "^2.43.0",
+    "allure-playwright": "^3.10.2",
+    "appium": "^3.6.0",
+    "appium-uiautomator2-driver": "^8.2.2",
+    "appium-xcuitest-driver": "^12.1.4",
+    "dotenv": "^17.4.2",
+    "faker": "^6.6.6",
+    "fs-extra": "^11.3.6",
+    "ortoni-report": "^4.10.0",
+    "tsx": "^4.23.0",
+    "typescript": "^5.9.2",
+    "webdriverio": "^9.30.1",
+    "winston": "^3.19.0"
+  }
+}

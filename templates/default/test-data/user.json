@@ -1,0 +1,15 @@
+{
+  "purchase": {
+    "productNames": [
+      "Samsung galaxy s6",
+      "Nexus 6",
+      "Sony vaio i5"
+    ],
+    "name": "Automation User",
+    "country": "India",
+    "city": "Bengaluru",
+    "creditCard": "4111111111111111",
+    "month": "12",
+    "year": "2030"
+  }
+}
