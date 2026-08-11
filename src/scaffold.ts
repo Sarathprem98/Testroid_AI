@@ -7,10 +7,11 @@ export async function scaffoldProject(targetDir: string, answers: Record<string,
   await fs.copy(templateDir, targetDir, { overwrite: false, errorOnExist: false });
 
   const envContent = [
-    `PROJECT_NAME=${answers.projectName}`,
-    `BASE_URL=${answers.baseUrl}`,
-    `ENVIRONMENT=${answers.environment}`
-  ].join("\n");
+  `PROJECT_NAME=${answers.projectName}`,
+  `BASE_URL=${answers.baseUrl}`,
+  `SUITE_TYPE=${answers.suiteType}`,
+  `ENVIRONMENT=${answers.environment}`
+].join("\n");
 
   await fs.writeFile(path.join(targetDir, ".env"), envContent);
 

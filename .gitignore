@@ -149,3 +149,4 @@ templates/*/playwright-report/
 templates/*/test-results/
 templates/*/ortoni-report/
 templates/*/logs/
+templates/*/package-lock.json
