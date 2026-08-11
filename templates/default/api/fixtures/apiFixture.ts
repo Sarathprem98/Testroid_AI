@@ -1,13 +1,13 @@
 import { test as base } from '@playwright/test';
-import { DemoblazeApiClient } from '../clients/DemoblazeApiClient';
+import { BaseApiClient } from '../clients/BaseApiClient';
 
 type ApiFixtureSet = {
-  demoblazeApiClient: DemoblazeApiClient;
+  apiClient: BaseApiClient;
 };
 
 export const test = base.extend<ApiFixtureSet>({
-  demoblazeApiClient: async ({ request }, use) => {
-    await use(new DemoblazeApiClient(request));
+  apiClient: async ({ request }, use) => {
+    await use(new BaseApiClient(request));
   },
 });
 

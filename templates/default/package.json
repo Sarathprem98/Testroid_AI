@@ -1,7 +1,7 @@
 {
-  "name": "playwrightframework",
+  "name": "testroid-template",
   "version": "1.0.0",
-  "description": "Production-ready Playwright automation framework for Demoblaze using TypeScript and POM.",
+  "description": "Production-ready multi-agent Playwright automation framework using TypeScript and POM.",
   "main": "index.js",
   "scripts": {
     "test": "playwright test",
@@ -19,8 +19,7 @@
     "playwright",
     "automation",
     "typescript",
-    "pom",
-    "demoblaze"
+    "pom"
   ],
   "author": "",
   "license": "ISC",

@@ -44,8 +44,8 @@ const toBoolean = (value: string | undefined, fallback: boolean): boolean => {
   return ['1', 'true', 'yes', 'on'].includes(value.toLowerCase());
 };
 
-const baseURL = process.env.BASE_URL ?? 'https://www.demoblaze.com';
-const apiBaseURL = process.env.API_BASE_URL ?? 'https://api.demoblaze.com';
+const baseURL = process.env.BASE_URL ?? 'http://localhost:3000';
+const apiBaseURL = process.env.API_BASE_URL ?? 'http://localhost:3000/api';
 const headless = toBoolean(process.env.HEADLESS, true);
 const slowMo = toNumber(process.env.SLOW_MO, 0);
 const timeout = toNumber(process.env.TIMEOUT, 30000);

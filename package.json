@@ -1,0 +1,41 @@
+{
+  "name": "testroid_ai",
+  "version": "1.0.0",
+  "description": "AI-powered multi-agent Playwright test framework generator",
+  "main": "dist/cli.js",
+  "bin": {
+    "testroid": "./dist/cli.js"
+  },
+  "scripts": {
+    "build": "tsup src/cli.ts --format cjs --clean",
+    "dev": "tsx src/cli.ts",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "files": ["dist", "templates"],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Sarathprem98/Testroid_AI.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "engines": { "node": ">=18" },
+  "bugs": {
+    "url": "https://github.com/Sarathprem98/Testroid_AI/issues"
+  },
+  "homepage": "https://github.com/Sarathprem98/Testroid_AI#readme",
+  "dependencies": {
+    "commander": "^15.0.0",
+    "fs-extra": "^11.4.0",
+    "prompts": "^2.4.2"
+  },
+  "devDependencies": {
+    "@types/fs-extra": "^11.0.4",
+    "@types/node": "^26.2.0",
+    "@types/prompts": "^2.4.9",
+    "tsup": "^8.5.1",
+    "tsx": "^4.23.12",
+    "typescript": "^7.0.2"
+  }
+}
