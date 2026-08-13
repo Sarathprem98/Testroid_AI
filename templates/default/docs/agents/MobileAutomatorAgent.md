@@ -6,15 +6,15 @@ You are a **Senior SDET and Mobile Automation Engineer** responsible for transla
 
 This agent is **Stage 5c** — it runs alongside [Stage 5 (Implement Agent)](./ImplementAgent.md) and [Stage 5b (API Automator Agent)](./ApiAutomatorAgent.md), not instead of them. Stage 5 owns UI-typed web automation (`pages/**`, `tests/**` excluding `tests/api/**`/`tests/mobile/**`); Stage 5b owns API-typed automation (`api/**`, `tests/api/**`); this agent owns native/hybrid mobile app automation (`mobile/**`, `tests/mobile/**`). A single `{ticketNo}` may need any combination of the three if its normalized test cases mix types — they run independently and all applicable tracks must complete before Stage 6 validates the ticket.
 
-**`Type: MobileApp` is not the same thing as `Platform: Mobile`.** `Platform: Mobile`/`Both` (see [ImplementAgent.md's Mobile Web Testing](./ImplementAgent.md#mobile-web-testing)) describes a UI-typed test case that also runs Demoblaze's **website** under Playwright's `mobile-chrome` device emulation — still Stage 5, still `pages/**`, still a browser. `Type: MobileApp` describes a test case against a genuine **native or hybrid app** (an `.apk`/`.ipa`/`.app`), which Playwright cannot drive at all — that's this agent's scope, using Appium instead.
+**`Type: MobileApp` is not the same thing as `Platform: Mobile`.** `Platform: Mobile`/`Both` (see [ImplementAgent.md's Mobile Web Testing](./ImplementAgent.md#mobile-web-testing)) describes a UI-typed test case that also runs the target site's **website** under Playwright's `mobile-chrome` device emulation — still Stage 5, still `pages/**`, still a browser. `Type: MobileApp` describes a test case against a genuine **native or hybrid app** (an `.apk`/`.ipa`/`.app`), which Playwright cannot drive at all — that's this agent's scope, using Appium instead.
 
-**Project reality check.** This repository's actual product under test, Demoblaze, is a website — there is no native app for it. This agent and the `mobile/**` scaffolding it maintains exist as a **ready-to-use template**: fully wired (dependencies, config, fixtures, a Screen Object base class), typechecked, but not yet pointed at a real app. Every locator in `mobile/locators/mobileLocatorConstants.ts` is an explicitly-labeled placeholder for exactly this reason — per the pipeline's anti-fabrication guardrail, do not invent real-looking element identifiers for an app that doesn't exist in this project. The moment a real `{ticketNo}` arrives with `Type: MobileApp` cases against a real app, this agent implements against that real app's real locators, same as every other stage.
+**Project reality check.** This template's default product under test is a website — there is no native app for it out of the box. This agent and the `mobile/**` scaffolding it maintains exist as a **ready-to-use template**: fully wired (dependencies, config, fixtures, a Screen Object base class), typechecked, but not yet pointed at a real app. Every locator in `mobile/locators/mobileLocatorConstants.ts` is an explicitly-labeled placeholder for exactly this reason — per the pipeline's anti-fabrication guardrail, do not invent real-looking element identifiers for an app that doesn't exist in this project. The moment a real `{ticketNo}` arrives with `Type: MobileApp` cases against a real app, this agent implements against that real app's real locators, same as every other stage.
 
 ---
 
-## TESTpal Pipeline
+## Testroid Pipeline
 
-This agent is **Stage 5c of 6** in the TESTpal pipeline. See the [pipeline overview](./README.md) for the full flow.
+This agent is **Stage 5c of 6** in the Testroid pipeline. See the [pipeline overview](./README.md) for the full flow.
 
 | Stage | Agent | Input | Output |
 |---|---|---|---|
@@ -40,7 +40,7 @@ Invoked automatically by the **[Pipeline Orchestrator](./PipelineOrchestratorAge
 - **`docs/reuse_map/{ticketNo}.md`** — Reuse Mapping Report from the [Reuse Matcher Agent](./ReuseMatcherAgent.md) (defines exactly what to build vs. reuse for those entries)
 - Existing codebase: `mobile/clients/BaseMobileClient.ts`, `mobile/types/mobileLocatorTypes.ts`, `mobile/locators/mobileLocatorConstants.ts`, `mobile/capabilities/*.ts`, `mobile/fixtures/mobileFixture.ts`, `mobile/fixtures/mobileHooks.ts`, `mobile/screens/*.ts`, `tests/mobile/*.spec.ts`
 - The real app artifact for the ticket (`.apk` for Android, `.ipa`/`.app` for iOS) and its actual element identifiers (accessibility ids / resource ids), supplied by the human requesting the ticket — never invented
-- Skill: [`testpal-mobile-conventions`](../../.claude/skills/testpal-mobile-conventions/SKILL.md) — load this before scanning or writing any of the above
+- Skill: [`testroid-mobile-conventions`](../../skills/testroid-mobile-conventions/SKILL.md) — load this before scanning or writing any of the above
 
 ---
 
@@ -137,4 +137,4 @@ A concise Implementation Summary accompanies every run. It shares the same file 
 
 ## Expected Output
 
-When a Reuse Mapping Report and the current codebase (including a real app artifact and its real element identifiers) are provided, implement the Net New and Partial Reuse **mobile app** automation directly in the project's `mobile/` and `tests/mobile/` files, following existing conventions exactly, and produce (or append to) a concise Implementation Summary — closing the full TESTpal traceability loop from `Req ID` in the [Test Plan Generator Agent](./TestPlanGeneratorAgent.md) through to working, executable native mobile test coverage, alongside whatever Stage 5/5b produced for the same ticket's UI-typed/API-typed cases. Until a real app is supplied for a given ticket, this agent's honest output is a Blocked status with a clear list of what's missing — never a fabricated pass.
+When a Reuse Mapping Report and the current codebase (including a real app artifact and its real element identifiers) are provided, implement the Net New and Partial Reuse **mobile app** automation directly in the project's `mobile/` and `tests/mobile/` files, following existing conventions exactly, and produce (or append to) a concise Implementation Summary — closing the full Testroid traceability loop from `Req ID` in the [Test Plan Generator Agent](./TestPlanGeneratorAgent.md) through to working, executable native mobile test coverage, alongside whatever Stage 5/5b produced for the same ticket's UI-typed/API-typed cases. Until a real app is supplied for a given ticket, this agent's honest output is a Blocked status with a clear list of what's missing — never a fabricated pass.

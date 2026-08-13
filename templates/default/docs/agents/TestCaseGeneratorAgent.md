@@ -8,9 +8,9 @@ This agent is the **downstream counterpart** of the [Test Plan Generator Agent](
 
 ---
 
-## TESTpal Pipeline
+## Testroid Pipeline
 
-This agent is **Stage 2 of 6** in the TESTpal pipeline. See the [pipeline overview](./README.md) for the full flow.
+This agent is **Stage 2 of 6** in the Testroid pipeline. See the [pipeline overview](./README.md) for the full flow.
 
 | Stage | Agent | Input | Output |
 |---|---|---|---|
@@ -201,7 +201,7 @@ For any case classified `Type: API`, use the same template structure above with 
 
 **Postconditions:** {e.g. "Session/token no longer needed", or TBD}
 
-**Automation Candidate:** {Yes/No} — {`api/clients/{module}ApiClient.ts` method suggestion, e.g. "DemoblazeApiClient.login() — Net New" or "existing DemoblazeApiClient.getEntries() — Full Reuse"}
+**Automation Candidate:** {Yes/No} — {`api/clients/{module}ApiClient.ts` method suggestion, e.g. "{module}ApiClient.login() — Net New" or "existing {module}ApiClient.getEntries() — Full Reuse"}
 
 **Notes:** {rate limits, known live-environment flakiness observed during test design, or TBD}
 ```
@@ -275,14 +275,14 @@ For each case marked as an automation candidate, recommend:
 
 **API-typed cases:**
 
-- Target API client (`api/clients/{module}ApiClient.ts`) and method to reuse or create, aligned with the project's `BaseApiClient` pattern (see the [`testpal-api-conventions`](../../.claude/skills/testpal-api-conventions/SKILL.md) skill)
+- Target API client (`api/clients/{module}ApiClient.ts`) and method to reuse or create, aligned with the project's `BaseApiClient` pattern (see the [`testroid-api-conventions`](../../skills/testroid-api-conventions/SKILL.md) skill)
 - Request/response type notes if a new shape is involved (`api/types/{module}ApiTypes.ts`)
 - Suggested spec file (`tests/api/{epic}/{ticketNo}.spec.ts`) and `test.describe` grouping
 - Suggested tag (`@api`, plus `@smoke`/`@regression` where applicable) consistent with the Test Plan's Automation Strategy section
 
 **`Type: MobileApp` cases:**
 
-- Target Screen Object (`mobile/screens/{module}/*.ts`) and method to reuse or create, aligned with the project's `BaseMobileClient` pattern (see the [`testpal-mobile-conventions`](../../.claude/skills/testpal-mobile-conventions/SKILL.md) skill)
+- Target Screen Object (`mobile/screens/{module}/*.ts`) and method to reuse or create, aligned with the project's `BaseMobileClient` pattern (see the [`testroid-mobile-conventions`](../../skills/testroid-mobile-conventions/SKILL.md) skill)
 - Locator strategy notes if new elements are involved (favor accessibility id first, per `MobileLocatorStrategyList`'s fallback order) — mark the exact identifier **TBD** unless it's already confirmed against the real app
 - Suggested spec file (`tests/mobile/{epic}/{ticketNo}.spec.ts`) and `test.describe` grouping
 - Suggested tag (`@mobile-app`, plus `@smoke`/`@regression` where applicable) consistent with the Test Plan's Automation Strategy section

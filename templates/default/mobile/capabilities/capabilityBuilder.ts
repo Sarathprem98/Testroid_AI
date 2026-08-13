@@ -22,7 +22,7 @@ const toNumber = (value: string | undefined, fallback: number): number => {
 // capability keys hardcoded) so this project isn't locked to one device-farm vendor.
 // Wire in a specific provider's own capability additions (e.g. BrowserStack's
 // `bstack:options`, Sauce Labs' `sauce:options`) via MOBILE_CLOUD_CAPABILITIES_JSON —
-// see the testpal-mobile-conventions skill for provider-specific examples.
+// see the testroid-mobile-conventions skill for provider-specific examples.
 const parseCloudCapabilitiesOverride = (): Record<string, unknown> => {
   const raw = process.env.MOBILE_CLOUD_CAPABILITIES_JSON;
   if (!raw) return {};

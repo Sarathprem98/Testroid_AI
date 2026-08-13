@@ -1,0 +1,43 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        # 18 is the minimum supported version declared in package.json's "engines"
+        # field; lts/* tracks whatever Node LTS release is current.
+        node-version: [18, lts/*]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: npm
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Type check
+        run: npx tsc --noEmit
+
+      - name: Build
+        run: npm run build
+
+      - name: Verify dist/cli.js was produced
+        run: test -s dist/cli.js
+
+      # vitest 4's own "engines" field requires Node >=20 — skip this step on the 18 leg
+      # rather than pin an older vitest just to cover it; type-check/build above still run
+      # on 18 to guard the actual CLI's stated Node 18 support.
+      - name: Run tests
+        if: matrix.node-version != 18
+        run: npm test

@@ -1,15 +1,15 @@
-# TESTpal Pipeline
+# Testroid Pipeline
 
-TESTpal is a six-stage agent pipeline (eight agents, since Stage 5 splits into a UI path, an API path, and a native mobile app path) that turns an Epic + SPEC file into working, validated, merge-ready automation — UI (Page Object Model) and API via Playwright, and native/hybrid mobile apps via Appium. Every artifact is keyed to a `{ticketNo}` and written to a fixed path so any stage — or a human — can locate any other stage's output without guessing. Manual test cases may also enter the pipeline directly at Stage 3, bypassing the Generator.
+Testroid is a six-stage agent pipeline (eight agents, since Stage 5 splits into a UI path, an API path, and a native mobile app path) that turns an Epic + SPEC file into working, validated, merge-ready automation — UI (Page Object Model) and API via Playwright, and native/hybrid mobile apps via Appium. Every artifact is keyed to a `{ticketNo}` and written to a fixed path so any stage — or a human — can locate any other stage's output without guessing. Manual test cases may also enter the pipeline directly at Stage 3, bypassing the Generator.
 
 Three Claude Code Skills operationalize the rules documented here so each stage doesn't have to re-derive them:
 
 | Skill | Applies To | Covers |
 |---|---|---|
-| [`guardrails`](../../.claude/skills/guardrails/SKILL.md) | All eight stages + the Orchestrator | The [Traceability Contract](#traceability-contract) and [Guardrails](#guardrails) sections below — HITL gates, anti-fabrication rule, safety rules |
-| [`testpal-locator-conventions`](../../.claude/skills/testpal-locator-conventions/SKILL.md) | Stage 4 (Reuse Matcher, UI-typed cases) and Stage 5 (Implement Agent) | `LocatorStrategyList` fallback pattern, `BasePage` primitives, Page Object/spec conventions used when scanning or writing `pages/**`, `locators/locatorConstants.ts`, `tests/**` |
-| [`testpal-api-conventions`](../../.claude/skills/testpal-api-conventions/SKILL.md) | Stage 4 (Reuse Matcher, API-typed cases) and Stage 5b (API Automator Agent) | `BaseApiClient` pattern, `ApiResponse` shape, API client/fixture/spec conventions used when scanning or writing `api/**`, `tests/api/**` |
-| [`testpal-mobile-conventions`](../../.claude/skills/testpal-mobile-conventions/SKILL.md) | Stage 4 (Reuse Matcher, `Type: MobileApp` cases) and Stage 5c (Mobile Automator Agent) | `BaseMobileClient` pattern, `MobileLocatorStrategyList` fallback, Appium/WebdriverIO environment setup (Android/iOS, local/cloud), Screen Object/spec conventions used when scanning or writing `mobile/**`, `tests/mobile/**` |
+| [`guardrails`](../../skills/guardrails/SKILL.md) | All eight stages + the Orchestrator | The [Traceability Contract](#traceability-contract) and [Guardrails](#guardrails) sections below — HITL gates, anti-fabrication rule, safety rules |
+| [`testroid-locator-conventions`](../../skills/testroid-locator-conventions/SKILL.md) | Stage 4 (Reuse Matcher, UI-typed cases) and Stage 5 (Implement Agent) | `LocatorStrategyList` fallback pattern, `BasePage` primitives, Page Object/spec conventions used when scanning or writing `pages/**`, `locators/locatorConstants.ts`, `tests/**` |
+| [`testroid-api-conventions`](../../skills/testroid-api-conventions/SKILL.md) | Stage 4 (Reuse Matcher, API-typed cases) and Stage 5b (API Automator Agent) | `BaseApiClient` pattern, `ApiResponse` shape, API client/fixture/spec conventions used when scanning or writing `api/**`, `tests/api/**` |
+| [`testroid-mobile-conventions`](../../skills/testroid-mobile-conventions/SKILL.md) | Stage 4 (Reuse Matcher, `Type: MobileApp` cases) and Stage 5c (Mobile Automator Agent) | `BaseMobileClient` pattern, `MobileLocatorStrategyList` fallback, Appium/WebdriverIO environment setup (Android/iOS, local/cloud), Screen Object/spec conventions used when scanning or writing `mobile/**`, `tests/mobile/**` |
 
 ## How to Run the Pipeline
 
@@ -67,8 +67,8 @@ Human: EpicNo + SPEC file (or requirement, or approved
 │    in:  docs/normalizer/{ticketNo}.md  pages/**, locators/**, api/**, mobile/**, tests/**)
 │    out: docs/reuse_map/{ticketNo}.md
 │         (checks pages/**, api/**, mobile/** for existing assets, flags reuse)
-│    skills: testpal-locator-conventions, testpal-api-conventions,
-│            testpal-mobile-conventions
+│    skills: testroid-locator-conventions, testroid-api-conventions,
+│            testroid-mobile-conventions
 └───────────────────────────────┘
         │
         ▼
@@ -87,7 +87,7 @@ Human: EpicNo + SPEC file (or requirement, or approved
 │    ⚠ allowlisted paths ││ │    ⚠ allowlisted paths ││ │    ⚠ allowlisted paths ││
 │    only; no commit/    ││ │    only; no commit/    ││ │    only; no commit/    ││
 │    push/merge          ││ │    push/merge          ││ │    push/merge          ││
-│    skill: testpal-     ││ │    skill: testpal-api- ││ │    skill: testpal-     ││
+│    skill: testroid-     ││ │    skill: testroid-api- ││ │    skill: testroid-     ││
 │    locator-conventions ││ │    conventions         ││ │    mobile-conventions  ││
 └─────────────────────┘│ └─────────────────────┘│ └─────────────────────┘│
         │              │         │              │         │              │
@@ -139,10 +139,10 @@ Merged — npx playwright test green
 | 1 | Test Plan Generator Agent | `EpicNo`, SPEC file | `docs/Test Plans/{ticketNo}_test_plan.md` | [TestPlanGeneratorAgent.md](./TestPlanGeneratorAgent.md) |
 | 2 | Test Case Generator Agent | Story/Task/Test Plan, Test Module(s)/Scenarios, Generic Detail Prompt | `docs/test_cases/{ticketNo}.md` | [TestCaseGeneratorAgent.md](./TestCaseGeneratorAgent.md) |
 | 3 | Test Case Normalizer Agent | `docs/test_cases/{ticketNo}.md` **or** existing manual test cases entered directly | `docs/normalizer/{ticketNo}.md` | [TestCaseNormalizerAgent.md](./TestCaseNormalizerAgent.md) |
-| 4 | Reuse Matcher Agent | `docs/normalizer/{ticketNo}.md` | `docs/reuse_map/{ticketNo}.md` — scans `pages/**` (UI-typed cases), `api/**` (API-typed cases), and `mobile/**` (`Type: MobileApp` cases) for existing methods, flags reuse | [ReuseMatcherAgent.md](./ReuseMatcherAgent.md) · skills: [`testpal-locator-conventions`](../../.claude/skills/testpal-locator-conventions/SKILL.md), [`testpal-api-conventions`](../../.claude/skills/testpal-api-conventions/SKILL.md), [`testpal-mobile-conventions`](../../.claude/skills/testpal-mobile-conventions/SKILL.md) |
-| 5 | Implement Agent | Normalized **UI-typed** test cases (`docs/normalizer/{ticketNo}.md`) + Reuse Matcher output (`docs/reuse_map/{ticketNo}.md`) | `pages/{module}/*.ts`, `tests/{epic}/{ticketNo}.spec.ts` | [ImplementAgent.md](./ImplementAgent.md) · skill: [`testpal-locator-conventions`](../../.claude/skills/testpal-locator-conventions/SKILL.md) |
-| 5b | API Automator Agent | Normalized **API-typed** test cases (`docs/normalizer/{ticketNo}.md`) + Reuse Matcher output (`docs/reuse_map/{ticketNo}.md`) | `api/clients/{module}ApiClient.ts`, `api/types/{module}ApiTypes.ts`, `tests/api/{epic}/{ticketNo}.spec.ts` | [ApiAutomatorAgent.md](./ApiAutomatorAgent.md) · skill: [`testpal-api-conventions`](../../.claude/skills/testpal-api-conventions/SKILL.md) |
-| 5c | Mobile Automator Agent | Normalized **`Type: MobileApp`** test cases (`docs/normalizer/{ticketNo}.md`) + Reuse Matcher output (`docs/reuse_map/{ticketNo}.md`) | `mobile/screens/{module}/*.ts`, `mobile/locators/mobileLocatorConstants.ts`, `tests/mobile/{epic}/{ticketNo}.spec.ts` | [MobileAutomatorAgent.md](./MobileAutomatorAgent.md) · skill: [`testpal-mobile-conventions`](../../.claude/skills/testpal-mobile-conventions/SKILL.md) |
+| 4 | Reuse Matcher Agent | `docs/normalizer/{ticketNo}.md` | `docs/reuse_map/{ticketNo}.md` — scans `pages/**` (UI-typed cases), `api/**` (API-typed cases), and `mobile/**` (`Type: MobileApp` cases) for existing methods, flags reuse | [ReuseMatcherAgent.md](./ReuseMatcherAgent.md) · skills: [`testroid-locator-conventions`](../../skills/testroid-locator-conventions/SKILL.md), [`testroid-api-conventions`](../../skills/testroid-api-conventions/SKILL.md), [`testroid-mobile-conventions`](../../skills/testroid-mobile-conventions/SKILL.md) |
+| 5 | Implement Agent | Normalized **UI-typed** test cases (`docs/normalizer/{ticketNo}.md`) + Reuse Matcher output (`docs/reuse_map/{ticketNo}.md`) | `pages/{module}/*.ts`, `tests/{epic}/{ticketNo}.spec.ts` | [ImplementAgent.md](./ImplementAgent.md) · skill: [`testroid-locator-conventions`](../../skills/testroid-locator-conventions/SKILL.md) |
+| 5b | API Automator Agent | Normalized **API-typed** test cases (`docs/normalizer/{ticketNo}.md`) + Reuse Matcher output (`docs/reuse_map/{ticketNo}.md`) | `api/clients/{module}ApiClient.ts`, `api/types/{module}ApiTypes.ts`, `tests/api/{epic}/{ticketNo}.spec.ts` | [ApiAutomatorAgent.md](./ApiAutomatorAgent.md) · skill: [`testroid-api-conventions`](../../skills/testroid-api-conventions/SKILL.md) |
+| 5c | Mobile Automator Agent | Normalized **`Type: MobileApp`** test cases (`docs/normalizer/{ticketNo}.md`) + Reuse Matcher output (`docs/reuse_map/{ticketNo}.md`) | `mobile/screens/{module}/*.ts`, `mobile/locators/mobileLocatorConstants.ts`, `tests/mobile/{epic}/{ticketNo}.spec.ts` | [MobileAutomatorAgent.md](./MobileAutomatorAgent.md) · skill: [`testroid-mobile-conventions`](../../skills/testroid-mobile-conventions/SKILL.md) |
 | 6 | Quality Check / Validator Agent | All prior outputs (test plan, test cases, normalized cases, reuse map, code — UI, API, and mobile app) | `docs/validation/{ticketNo}.md` — pass/fail report + feedback loop | [ValidatorAgent.md](./ValidatorAgent.md) |
 
 ---
@@ -164,10 +164,10 @@ UI-typed test cases carry a second dimension alongside `Type`: **`Platform`** �
 
 - **Stage 2** assigns `Platform` per case (defaulting to the Test Plan's Device Coverage scope for that module, or `TBD` if unstated — never assumed).
 - **Stage 4** treats Page Objects/locators as platform-agnostic by default, but flags a scenario as *not actually covered on mobile* if the matched spec already carries a `mobile-chrome`-only skip/guard.
-- **Stage 5** implements one spec for both projects; mobile-only behavior differences are isolated to a guarded assertion (never a forked implementation), and a confirmed live-site mobile-only defect is skipped with cited evidence rather than masked by a loosened assertion — see [ImplementAgent.md's Mobile Web Testing section](./ImplementAgent.md#mobile-web-testing) and the [`testpal-locator-conventions`](../../.claude/skills/testpal-locator-conventions/SKILL.md) skill for the concrete conventions (no `force: true` to dodge animation races, no hardcoded desktop-only DOM order, respect `tests/hooks.ts`'s `isMobile`-aware viewport guard).
+- **Stage 5** implements one spec for both projects; mobile-only behavior differences are isolated to a guarded assertion (never a forked implementation), and a confirmed live-site mobile-only defect is skipped with cited evidence rather than masked by a loosened assertion — see [ImplementAgent.md's Mobile Web Testing section](./ImplementAgent.md#mobile-web-testing) and the [`testroid-locator-conventions`](../../skills/testroid-locator-conventions/SKILL.md) skill for the concrete conventions (no `force: true` to dodge animation races, no hardcoded desktop-only DOM order, respect `tests/hooks.ts`'s `isMobile`-aware viewport guard).
 - **Stage 6** runs `npx playwright test --project=mobile-chrome` for any `Platform: Mobile`/`Both` case in addition to `chromium`, and verifies any mobile-only skip cites a real, verified defect rather than an unjustified bypass.
 
-**Do not confuse `Platform: Mobile` with `Type: MobileApp`.** `Platform: Mobile` is a UI-typed case that also runs Demoblaze's *website* under Playwright's mobile web emulation — still Stage 5. `Type: MobileApp` is a case against a genuine native/hybrid *app*, which Playwright cannot drive at all — that's [Stage 5c (Mobile Automator Agent)](./MobileAutomatorAgent.md), using Appium instead. See [MobileAutomatorAgent.md](./MobileAutomatorAgent.md) for the full distinction.
+**Do not confuse `Platform: Mobile` with `Type: MobileApp`.** `Platform: Mobile` is a UI-typed case that also runs the target site's *website* under Playwright's mobile web emulation — still Stage 5. `Type: MobileApp` is a case against a genuine native/hybrid *app*, which Playwright cannot drive at all — that's [Stage 5c (Mobile Automator Agent)](./MobileAutomatorAgent.md), using Appium instead. See [MobileAutomatorAgent.md](./MobileAutomatorAgent.md) for the full distinction.
 
 ---
 
@@ -206,7 +206,7 @@ Each Fail verdict produces an itemized, file/line-referenced (or section-referen
 
 ## Guardrails
 
-TESTpal writes code and drives test execution, so autonomy is bounded deliberately. These guardrails apply to **every agent in the pipeline**, in addition to each agent's own doc-specific constraints. They're operationalized as the [`guardrails`](../../.claude/skills/guardrails/SKILL.md) Claude Code Skill, which loads automatically whenever any stage is active.
+Testroid writes code and drives test execution, so autonomy is bounded deliberately. These guardrails apply to **every agent in the pipeline**, in addition to each agent's own doc-specific constraints. They're operationalized as the [`guardrails`](../../skills/guardrails/SKILL.md) Claude Code Skill, which loads automatically whenever any stage is active.
 
 ### Human-in-the-Loop (HITL) Gates
 
@@ -225,7 +225,7 @@ TESTpal writes code and drives test execution, so autonomy is bounded deliberate
 - **No deletion of existing passing tests or methods.** Agents add or make the minimal documented edit; they do not remove working code, and Full Reuse assets (per the Reuse Mapping Report) are strictly read-only in Stage 5/5b/5c.
 - **Anti-fabrication guardrail.** Every stage marks unknowns as **TBD** rather than inventing business data, credentials, locators, expected results, or test outcomes. This is the single most important rule in the pipeline — a fabricated "Pass," a fabricated Page Object method, or a fabricated native-app element identifier is worse than an honest gap.
 - **No real credentials, PII, or secrets.** Test data must come from the project's `randomData`/fixture generation, never real user data. If a SPEC file, requirement, or manually entered test case appears to contain a real secret or PII, the receiving agent halts and flags it instead of propagating it downstream. This includes cloud device-farm credentials for Stage 5c, which are read from environment variables only.
-- **Shared-environment caution.** The AUT (`demoblaze.com` and its API backend, `api.demoblaze.com`) is a shared public demo, not an isolated sandbox. No agent may design or execute a test that causes irreversible, costly, or disruptive side effects on shared state beyond what the existing `purchase.001.spec.ts` flow already establishes as acceptable (test purchases with generated data). Anything resembling load generation, destructive admin actions, or spam account creation is out of scope — this applies equally to API calls (e.g. repeated `/signup` or `/addtocart` calls) and to UI actions. For Stage 5c, this extends to real device/emulator/cloud resources — no excessive app installs/reinstalls or unnecessary concurrent cloud sessions.
+- **Shared-environment caution.** Treat the AUT (whatever `BASE_URL`/`API_BASE_URL` currently point at) as a shared, non-isolated environment unless it's verifiably private/disposable. No agent may design or execute a test that causes irreversible, costly, or disruptive side effects on shared state beyond what the project's existing example specs already establish as acceptable. Anything resembling load generation, destructive admin actions, or spam account creation is out of scope — this applies equally to API calls (e.g. repeated signup or other mutating calls) and to UI actions. For Stage 5c, this extends to real device/emulator/cloud resources — no excessive app installs/reinstalls or unnecessary concurrent cloud sessions.
 - **Verification before claiming success.** No agent may report a check, test, or verdict as passing without having actually run it (or explicitly stating it could not be run and marking the result Blocked/TBD instead of Pass) — for Stage 5c specifically, this includes being honest when no Appium server, device/emulator, or cloud access is available in the current environment.
 - **Audit trail.** Every stage's output file carries a header with `{ticketNo}`, date, and pipeline stage, so the full chain from requirement to merged code remains reconstructable after the fact.
 
@@ -245,4 +245,4 @@ TESTpal writes code and drives test execution, so autonomy is bounded deliberate
 | Implementation Summary | `docs/implementation/{ticketNo}.md` — shared by Stage 5, Stage 5b, and Stage 5c via separate, clearly labeled sections when a ticket has more than one type |
 | Validation Report | `docs/validation/{ticketNo}.md` |
 
-> Note: `pages/{module}/*.ts` and `tests/{epic}/{ticketNo}.spec.ts` describe the **target** convention for pipeline-generated UI output. The framework's current UI files (`pages/HomePage.ts`, `tests/purchase.001.spec.ts`, etc.) are flat and predate this convention — they are not retroactively moved unless a migration is explicitly requested. `api/**` and `tests/api/**` are new as of the API testing framework, so `api/clients/DemoblazeApiClient.ts` and `tests/api/api.001.spec.ts` are themselves the flat, hand-authored starting point for that layer — pipeline-generated API modules follow the `{module}`/`{epic}` convention from the start. `mobile/**` and `tests/mobile/**` are new as of the mobile app automation scaffolding, are already structured as `{module}`/`{epic}` from the start, and — since this project has no real native app yet — `mobile/screens/SampleLoginScreen.ts` and `tests/mobile/sample-app.appium.spec.ts` are explicitly illustrative placeholders, not a real hand-authored starting point the way `DemoblazeApiClient.ts` is.
+> Note: `pages/{module}/*.ts` and `tests/{epic}/{ticketNo}.spec.ts` describe the **target** convention for pipeline-generated UI output. If a project has pre-existing flat UI files that predate this convention (e.g. a `pages/LoginPage.ts` sitting directly under `pages/`), they are not retroactively moved unless a migration is explicitly requested. `mobile/**` and `tests/mobile/**` are structured as `{module}`/`{epic}` from the start, and — since this project has no real native app yet — `mobile/screens/SampleLoginScreen.ts` and `tests/mobile/sample-app.appium.spec.ts` are explicitly illustrative placeholders, not a real hand-authored starting point.

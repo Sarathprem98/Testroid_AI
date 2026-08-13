@@ -7,7 +7,7 @@ export type AndroidCapabilityOptions = {
 
 // Local execution: an Android emulator (Android Studio AVD) or a USB-connected device
 // with the app under test installed/available at `appPath`. Requires ANDROID_HOME + a
-// running `adb` daemon — see the testpal-mobile-conventions skill for setup steps.
+// running `adb` daemon — see the testroid-mobile-conventions skill for setup steps.
 export const buildAndroidCapabilities = (options: AndroidCapabilityOptions = {}): WebdriverIO.Capabilities => {
   const appPath = options.appPath ?? process.env.ANDROID_APP_PATH;
   const platformVersion = options.platformVersion ?? process.env.ANDROID_PLATFORM_VERSION;

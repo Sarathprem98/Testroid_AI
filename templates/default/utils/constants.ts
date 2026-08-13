@@ -1,6 +1,6 @@
 export const CONSTANTS = {
   basePassword: 'Password@123',
-  defaultProductNames: ['Samsung galaxy s6', 'Nexus 6', 'Sony vaio i5'],
+  defaultProductNames: ['Sample Product A', 'Sample Product B', 'Sample Product C'],
   defaultUserDisplayName: 'Automation User',
   defaultCountry: 'India',
   defaultCity: 'Bengaluru',

@@ -8,9 +8,9 @@ This agent does not generate automation code. It decides, for every normalized t
 
 ---
 
-## TESTpal Pipeline
+## Testroid Pipeline
 
-This agent is **Stage 4 of 6** in the TESTpal pipeline. See the [pipeline overview](./README.md) for the full flow.
+This agent is **Stage 4 of 6** in the Testroid pipeline. See the [pipeline overview](./README.md) for the full flow.
 
 | Stage | Agent | Input | Output |
 |---|---|---|---|
@@ -39,12 +39,12 @@ Invoked automatically by the **[Pipeline Orchestrator](./PipelineOrchestratorAge
   - Existing spec files (`tests/*.spec.ts`, or `tests/{epic}/*.spec.ts`, excluding `tests/api/**`)
   - Existing fixtures (`fixtures/testFixture.ts`)
   - Existing shared utilities/helpers (`utils/*.ts`, `src/helpers/*`)
-- For **API-typed** cases (`"type": "API"`), the current API codebase, scanned under `api/**` — see the [`testpal-api-conventions`](../../.claude/skills/testpal-api-conventions/SKILL.md) skill:
+- For **API-typed** cases (`"type": "API"`), the current API codebase, scanned under `api/**` — see the [`testroid-api-conventions`](../../skills/testroid-api-conventions/SKILL.md) skill:
   - Existing API client classes (`api/clients/*.ts`)
   - Existing request/response types (`api/types/*.ts`)
   - Existing API spec files (`tests/api/*.spec.ts`, or `tests/api/{epic}/*.spec.ts`)
   - Existing API fixtures/hooks (`api/fixtures/apiFixture.ts`, `api/fixtures/apiHooks.ts`)
-- For **`Type: MobileApp`** cases, the current mobile app codebase, scanned under `mobile/**` — see the [`testpal-mobile-conventions`](../../.claude/skills/testpal-mobile-conventions/SKILL.md) skill:
+- For **`Type: MobileApp`** cases, the current mobile app codebase, scanned under `mobile/**` — see the [`testroid-mobile-conventions`](../../skills/testroid-mobile-conventions/SKILL.md) skill:
   - Existing Screen Object classes (`mobile/screens/*.ts`, or `mobile/screens/{module}/*.ts`)
   - Existing locator definitions (`mobile/locators/mobileLocatorConstants.ts`)
   - Existing mobile spec files (`tests/mobile/*.spec.ts`, or `tests/mobile/{epic}/*.spec.ts`)
@@ -72,8 +72,8 @@ See the [pipeline-wide Guardrails](./README.md#guardrails) for rules that apply 
   - **Net New** — no existing asset covers this behavior; new Page Object method(s) and/or locator entries are required.
 - Detect near-duplicate automation logic across existing spec files (e.g., a new test case that substantially re-tests a flow already covered inside `tests/purchase.001.spec.ts`) and flag it rather than let it be re-automated blindly.
 - For **UI-typed** Partial Reuse and Net New cases, recommend concrete implementation targets: which Page Object class to extend, which method signature to add, and which locator entries to add — following the project's existing `LocatorStrategyList` fallback pattern (role → label/placeholder/text → css → xpath, as seen in `locators/locatorConstants.ts`).
-- For **API-typed** Partial Reuse and Net New cases, recommend concrete implementation targets: which `api/clients/{module}ApiClient.ts` to extend (or create), which method signature to add, and which request/response type to add or extend in `api/types/{module}ApiTypes.ts` — following the project's `BaseApiClient` pattern (see the [`testpal-api-conventions`](../../.claude/skills/testpal-api-conventions/SKILL.md) skill).
-- For **`Type: MobileApp`** Partial Reuse and Net New cases, recommend concrete implementation targets: which `mobile/screens/{module}/*.ts` Screen Object to extend (or create), which method signature to add, and which locator entries to add to `mobile/locators/mobileLocatorConstants.ts` — following the project's `BaseMobileClient` pattern and `MobileLocatorStrategyList` fallback order (see the [`testpal-mobile-conventions`](../../.claude/skills/testpal-mobile-conventions/SKILL.md) skill). Never propose a specific accessibility id/resource id as if verified unless it actually was — recommend the locator *shape* and mark the identifier itself `TBD` when the real app hasn't been inspected.
+- For **API-typed** Partial Reuse and Net New cases, recommend concrete implementation targets: which `api/clients/{module}ApiClient.ts` to extend (or create), which method signature to add, and which request/response type to add or extend in `api/types/{module}ApiTypes.ts` — following the project's `BaseApiClient` pattern (see the [`testroid-api-conventions`](../../skills/testroid-api-conventions/SKILL.md) skill).
+- For **`Type: MobileApp`** Partial Reuse and Net New cases, recommend concrete implementation targets: which `mobile/screens/{module}/*.ts` Screen Object to extend (or create), which method signature to add, and which locator entries to add to `mobile/locators/mobileLocatorConstants.ts` — following the project's `BaseMobileClient` pattern and `MobileLocatorStrategyList` fallback order (see the [`testroid-mobile-conventions`](../../skills/testroid-mobile-conventions/SKILL.md) skill). Never propose a specific accessibility id/resource id as if verified unless it actually was — recommend the locator *shape* and mark the identifier itself `TBD` when the real app hasn't been inspected.
 - Flag naming collisions or locator drift risk on the UI side (e.g., a proposed new locator that would shadow or conflict with an existing one), endpoint/method collision risk on the API side (e.g., a proposed new client method that would call the same endpoint+verb as an existing one under a different name), and screen/element collision risk on the mobile side (e.g., a proposed new locator that would shadow an existing Screen Object's element).
 - Never modify existing Page Objects, locators, fixtures, API clients, API types, Screen Objects, mobile locators, or spec files — this agent only reports and recommends. Implementation is a separate, explicit step (Stage 5, Stage 5b, or Stage 5c).
 
@@ -91,14 +91,14 @@ Apply the following when determining a match between a normalized test case and 
 - **Fixture/dependency overlap** — the same Page Object is already wired into `fixtures/testFixture.ts` and available to the test without new fixture work.
 - **Platform coverage overlap** (for `platform: Mobile` or `Both` cases) — Page Objects/specs are platform-agnostic by construction (the same code runs under both `chromium` and `mobile-chrome` via Playwright device emulation), so method/locator reuse normally transfers automatically. The one exception: if the matched spec's `test()` already carries a `test.skip(test.info().project.name === 'mobile-chrome', …)` guard or a mobile-only conditional (as seen in `tests/additional-test-cases.003.spec.ts`'s carousel tests), mobile coverage is **not actually exercised** for that scenario even though the desktop asset is Full Reuse — classify the mobile half as Partial Reuse or Net New (never Full Reuse) and cite the existing skip/guard as the gap.
 
-**API-typed cases** (see [`testpal-api-conventions`](../../.claude/skills/testpal-api-conventions/SKILL.md) for the full model):
+**API-typed cases** (see [`testroid-api-conventions`](../../skills/testroid-api-conventions/SKILL.md) for the full model):
 
 - **Endpoint + HTTP method overlap** — an existing `api/clients/{module}ApiClient.ts` method already calls the same path and verb the test case describes.
 - **Response-shape overlap** — an existing type in `api/types/{module}ApiTypes.ts` already models the fields the test case asserts on.
 - **Scenario overlap at the spec level** — an existing `test()` block in `tests/api/**` already exercises the same call, even under a different title.
 - **Fixture/dependency overlap** — the same API client is already wired into `api/fixtures/apiFixture.ts` and available to the test without new fixture work.
 
-**`Type: MobileApp` cases** (see [`testpal-mobile-conventions`](../../.claude/skills/testpal-mobile-conventions/SKILL.md) for the full model):
+**`Type: MobileApp` cases** (see [`testroid-mobile-conventions`](../../skills/testroid-mobile-conventions/SKILL.md) for the full model):
 
 - **Method/responsibility overlap** — an existing Screen Object method's name and behavior semantically match the test case's action (e.g., `login`, `isLoginButtonVisible`).
 - **Locator overlap** — the element(s) the test case interacts with already have an entry in `mobileLocatorConstants.ts` (matched by accessibility id, resource id, or the same native-strategy expression) — **and** that locator is confirmed against the real app, not one of the project's illustrative placeholders (see the Supported Inputs note above).
@@ -158,7 +158,7 @@ Each reuse-mapped test case is represented identically in the Markdown table and
     {
       "type": "method | locator | spec | fixture | client | endpoint | apiType | screen",
       "file": "string",
-      "reference": "string (class/method/line, e.g. LoginPage.login():42, DemoblazeApiClient.login():18, or SampleLoginScreen.login():8)"
+      "reference": "string (class/method/line, e.g. LoginPage.login():42, {module}ApiClient.login():18, or SampleLoginScreen.login():8)"
     }
   ],
   "gap": "string | TBD | null",

@@ -6,9 +6,9 @@ You are a **Senior QA Architect, Test Lead, and Playwright Automation Expert** r
 
 ---
 
-## TESTpal Pipeline
+## Testroid Pipeline
 
-This agent is **Stage 1 of 6** in the TESTpal pipeline. See the [pipeline overview](./README.md) for the full flow.
+This agent is **Stage 1 of 6** in the Testroid pipeline. See the [pipeline overview](./README.md) for the full flow.
 
 | Stage | Agent | Input | Output |
 |---|---|---|---|

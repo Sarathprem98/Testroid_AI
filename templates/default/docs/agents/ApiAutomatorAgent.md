@@ -8,9 +8,9 @@ This agent is **Stage 5b** — it runs alongside [Stage 5 (Implement Agent)](./I
 
 ---
 
-## TESTpal Pipeline
+## Testroid Pipeline
 
-This agent is **Stage 5b of 6** in the TESTpal pipeline. See the [pipeline overview](./README.md) for the full flow.
+This agent is **Stage 5b of 6** in the Testroid pipeline. See the [pipeline overview](./README.md) for the full flow.
 
 | Stage | Agent | Input | Output |
 |---|---|---|---|
@@ -34,7 +34,7 @@ Invoked automatically by the **[Pipeline Orchestrator](./PipelineOrchestratorAge
 - **`docs/normalizer/{ticketNo}.md`** — Normalized Test Cases (Markdown + JSON), filtered to entries where `"type": "API"` — source of truth for exact endpoint, method, headers, request body, and expected status/response
 - **`docs/reuse_map/{ticketNo}.md`** — Reuse Mapping Report from the [Reuse Matcher Agent](./ReuseMatcherAgent.md) (defines exactly what to build vs. reuse for those API-typed entries)
 - Existing codebase: `api/clients/*.ts`, `api/types/*.ts`, `api/fixtures/apiFixture.ts`, `api/fixtures/apiHooks.ts`, `tests/api/*.spec.ts` (or `tests/api/{epic}/*.spec.ts`), `utils/*.ts` (e.g. `randomData.ts`, `logger.ts`)
-- Skill: [`testpal-api-conventions`](../../.claude/skills/testpal-api-conventions/SKILL.md) — load this before scanning or writing any of the above
+- Skill: [`testroid-api-conventions`](../../skills/testroid-api-conventions/SKILL.md) — load this before scanning or writing any of the above
 
 ---
 
@@ -46,7 +46,7 @@ This is a **high-risk stage** — like Stage 5, it writes framework code. See th
 - **File scope allowlist.** Writes are restricted to `api/**` and `tests/api/**`. This agent must never modify `pages/**`, `locators/locatorConstants.ts`, `tests/**` outside `tests/api/**`, `fixtures/testFixture.ts`, `tests/hooks.ts`, `playwright.config.ts`, `global-setup.ts`, `global-teardown.ts`, `.env`, `package.json`, CI/CD config, or any file under `docs/agents/`. If a change outside this allowlist appears necessary (e.g. a new environment variable, a new Playwright project setting), stop and flag it for a human rather than making it.
 - **Full Reuse is read-only.** Any API client method the Reuse Mapping Report classifies as Full Reuse must not be touched — not even a "harmless" rename or formatting pass.
 - **No deletion of existing passing tests or methods.** This agent adds or makes the minimal documented Partial Reuse edit; it does not remove or overwrite working code, including other tickets' API tests in the same file.
-- **No destructive or costly API calls.** New specs must not perform destructive admin actions, bulk data creation, or repeated signup/order calls beyond what's needed for the scenario, since `api.demoblaze.com` is a shared public demo backend, not an isolated sandbox — the same shared-environment caution that applies to `demoblaze.com` UI tests applies here.
+- **No destructive or costly API calls.** New specs must not perform destructive admin actions, bulk data creation, or repeated signup/order calls beyond what's needed for the scenario — treat the AUT's API backend as a shared, non-isolated environment unless it's verifiably private/disposable, the same shared-environment caution that applies to UI tests.
 - **No hardcoded credentials, tokens, or session cookies.** Auth tokens/session cookies must be obtained dynamically within the test (e.g. via a prior `login`/`signup` call), never hardcoded as literal strings in a client or spec.
 - **Verification is mandatory, not optional.** Never report "implemented" without having actually typechecked and attempted to run the affected spec(s) via `npm run test:api`. If a live third-party endpoint returns an error status or is unreachable, report the actual observed status/behavior and mark status **Blocked** in the Implementation Summary — never imply a pass that didn't happen, and never silently loosen an assertion (e.g. widening an expected `200` to "any non-5xx") just to make a flaky live dependency go green.
 - **No real credentials or PII in test data.** Only generated/fixture data (matching the project's existing `randomData.ts` pattern) or values explicitly present in the Normalized Test Case.
@@ -58,7 +58,7 @@ This is a **high-risk stage** — like Stage 5, it writes framework code. See th
 - For every **Net New** API-typed case: implement the new API client method(s) in `api/clients/{module}ApiClient.ts` (creating the file if the module doesn't exist yet), add any new response/request types to `api/types/{module}ApiTypes.ts`, register the client in `api/fixtures/apiFixture.ts` if it isn't already, and write the new spec test(s) in `tests/api/{epic}/{ticketNo}.spec.ts`.
 - For every **Partial Reuse** API-typed case: extend the existing client method with the minimal change identified in the Reuse Mapping Report (new parameter, header, or assertion) — do not rewrite unrelated working code around it.
 - For every **Full Reuse** API-typed case: do not modify the underlying client method. If the Reuse Mapping Report shows the *spec-level scenario* is still new (existing method, new `test()` entry), add only that test entry.
-- Follow the project's existing API conventions exactly, matching the patterns established in `api/clients/BaseApiClient.ts`, `api/clients/DemoblazeApiClient.ts`, and `tests/api/api.001.spec.ts`:
+- Follow the project's existing API conventions exactly, matching the patterns established in `api/clients/BaseApiClient.ts` and any existing domain client/spec already in the project:
   - API clients extend `BaseApiClient` and call its `get`/`post`/`put`/`patch`/`delete` primitives rather than touching `APIRequestContext`/`fetch` directly.
   - New response/request shapes are typed in `api/types/{module}ApiTypes.ts`, never as inline anonymous object literals in a client or spec.
   - Specs use `api/fixtures/apiFixture.ts` for typed client injection and call `registerApiHooks(test, '<suite name>')` from `api/fixtures/apiHooks.ts` — never the UI-side `registerHooks`, which destructures `page` and would force a browser launch.
@@ -127,4 +127,4 @@ A concise Implementation Summary accompanies every run. It shares the same file 
 
 ## Expected Output
 
-When a Reuse Mapping Report and the current codebase are provided, implement the Net New and Partial Reuse **API** automation directly in the project's `api/` and `tests/api/` files, following existing conventions exactly, and produce (or append to) a concise Implementation Summary — closing the full TESTpal traceability loop from `Req ID` in the [Test Plan Generator Agent](./TestPlanGeneratorAgent.md) through to working, executable API test coverage, alongside whatever Stage 5 produced for the same ticket's UI-typed cases.
+When a Reuse Mapping Report and the current codebase are provided, implement the Net New and Partial Reuse **API** automation directly in the project's `api/` and `tests/api/` files, following existing conventions exactly, and produce (or append to) a concise Implementation Summary — closing the full Testroid traceability loop from `Req ID` in the [Test Plan Generator Agent](./TestPlanGeneratorAgent.md) through to working, executable API test coverage, alongside whatever Stage 5 produced for the same ticket's UI-typed cases.

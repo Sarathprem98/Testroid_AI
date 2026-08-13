@@ -1,10 +1,11 @@
 import type { MobileLocatorStrategyList } from '../types/mobileLocatorTypes';
 
-// No real native app exists in this project yet (Demoblaze is a website, automated via
-// pages/** + Playwright, not a native app). The sampleLoginScreen group below is
-// explicitly illustrative/placeholder — populate it (and any new screen group) with real
-// accessibility ids/resource ids confirmed against an actual app once one is supplied for
-// a ticket, the same way pages/HomePage.ts's locators are grounded in demoblaze.com's real DOM.
+// No real native app exists in this project yet (this template targets a website,
+// automated via pages/** + Playwright, not a native app). The sampleLoginScreen group
+// below is explicitly illustrative/placeholder — populate it (and any new screen group)
+// with real accessibility ids/resource ids confirmed against an actual app once one is
+// supplied for a ticket, the same way pages/**'s locators are grounded in the target
+// site's real DOM.
 export const mobileLocatorConstants = {
   sampleLoginScreen: {
     usernameInput: [

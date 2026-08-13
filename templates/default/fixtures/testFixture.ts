@@ -1,55 +1,24 @@
 import { test as base } from '@playwright/test';
-import { HomePage } from '../pages/HomePage';
-import { SignUpPage } from '../pages/SignUpPage';
-import { LoginPage } from '../pages/LoginPage';
-import { ProductPage } from '../pages/ProductPage';
-import { CartPage } from '../pages/CartPage';
-import { CheckoutPage } from '../pages/CheckoutPage';
-import type { PurchaseData } from '../utils/constants';
-import { buildPurchaseData } from '../utils/randomData';
 import { logger } from '../utils/logger';
 import { NetworkLogger } from '../utils/networkHelper';
 import { ConsoleLogger } from '../utils/consoleHelper';
 
-type FixtureSet = {
-  homePage: HomePage;
-  signUpPage: SignUpPage;
-  loginPage: LoginPage;
-  productPage: ProductPage;
-  cartPage: CartPage;
-  checkoutPage: CheckoutPage;
-  purchaseData: PurchaseData;
-};
-
-export const test = base.extend<FixtureSet>({
-  homePage: async ({ page }, use) => {
-    await use(new HomePage(page));
-  },
-  signUpPage: async ({ page }, use) => {
-    await use(new SignUpPage(page));
-  },
-  loginPage: async ({ page }, use) => {
-    await use(new LoginPage(page));
-  },
-  productPage: async ({ page }, use) => {
-    await use(new ProductPage(page));
-  },
-  cartPage: async ({ page }, use) => {
-    await use(new CartPage(page));
-  },
-  checkoutPage: async ({ page }, use) => {
-    await use(new CheckoutPage(page));
-  },
-  purchaseData: async ({}, use, testInfo) => {
-    const productName = testInfo.title.includes('Nexus 6')
-      ? 'Nexus 6'
-      : testInfo.title.includes('Sony vaio i5')
-        ? 'Sony vaio i5'
-        : 'Samsung galaxy s6';
-
-    await use(buildPurchaseData(productName));
-  },
-});
+/**
+ * Register one fixture per Page Object here as you add them under `pages/`, e.g.:
+ *
+ * ```ts
+ * import { LoginPage } from '../pages/LoginPage';
+ *
+ * type FixtureSet = { loginPage: LoginPage };
+ *
+ * export const test = base.extend<FixtureSet>({
+ *   loginPage: async ({ page }, use) => {
+ *     await use(new LoginPage(page));
+ *   },
+ * });
+ * ```
+ */
+export const test = base;
 
 export { expect } from '@playwright/test';
 

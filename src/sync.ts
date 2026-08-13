@@ -2,10 +2,15 @@ import fs from "fs-extra";
 import path from "path";
 import deepmerge from "deepmerge";
 
+export type SyncResult = {
+  added: string[];
+  skipped: string[];
+};
+
 export async function syncIntoExistingProject(
   targetDir: string,
   answers: Record<string, any>
-) {
+): Promise<SyncResult> {
   const templateDir = path.join(__dirname, "..", "templates", "default");
 
   // 1. Merge package.json
@@ -40,11 +45,15 @@ export async function syncIntoExistingProject(
     "package-lock.json",
     "playwright.config.ts",
     "node_modules",
+    // The AI assistant guide is handled separately (generated from a scan of the pre-sync
+    // project state, then written to whichever path the chosen tool expects via
+    // src/aiConfig.ts) — this reference copy is never a valid destination as-is.
+    "CLAUDE.md",
   ]);
 
   const entries = await fs.readdir(templateDir);
-  let added = 0;
-  let skipped = 0;
+  const added: string[] = [];
+  const skipped: string[] = [];
 
   for (const entry of entries) {
     if (skipTopLevel.has(entry)) continue;
@@ -54,11 +63,13 @@ export async function syncIntoExistingProject(
 
     if (await fs.pathExists(destPath)) {
       console.log(`⏭️  Skipped (already exists): ${entry}`);
-      skipped++;
+      skipped.push(entry);
     } else {
-      await fs.copy(srcPath, destPath);
+      // .gitkeep files exist only to keep otherwise-empty template folders (e.g. tests/)
+      // alive in git/npm — not meant to actually land in a synced project.
+      await fs.copy(srcPath, destPath, { filter: (src) => path.basename(src) !== ".gitkeep" });
       console.log(`➕ Added: ${entry}`);
-      added++;
+      added.push(entry);
     }
   }
 
@@ -70,12 +81,14 @@ export async function syncIntoExistingProject(
       "You'll need to manually wire in Testroid's fixtures/projects. " +
       "See templates/default/playwright.config.ts as a reference."
     );
+    skipped.push("playwright.config.ts");
   } else {
     await fs.copy(
       path.join(templateDir, "playwright.config.ts"),
       targetConfigPath
     );
     console.log("✅ Added playwright.config.ts");
+    added.push("playwright.config.ts");
   }
 
   // 4. Merge or create .env
@@ -106,5 +119,7 @@ export async function syncIntoExistingProject(
     console.log("✅ Created .env");
   }
 
-  console.log(`\n📦 Sync complete: ${added} added, ${skipped} skipped (already existed)`);
+  console.log(`\n📦 Sync complete: ${added.length} added, ${skipped.length} skipped (already existed)`);
+
+  return { added, skipped };
 }

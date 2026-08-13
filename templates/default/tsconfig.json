@@ -10,11 +10,12 @@
     "forceConsistentCasingInFileNames": true,
     "ignoreDeprecations": "5.0",
     "noEmit": true,
-    "types": ["node", "@playwright/test"]
+    "types": ["node"]
   },
   "include": [
     "src/**/*.ts",
     "pages/**/*.ts",
+    "locators/**/*.ts",
     "tests/**/*.ts",
     "fixtures/**/*.ts",
     "utils/**/*.ts",

@@ -25,7 +25,7 @@ const buildAxe = (page: Page, options: AccessibilityScanOptions = {}) => {
 /**
  * Runs an axe-core scan and logs/attaches results without failing the test.
  * Used passively from hooks so every test gets accessibility visibility
- * without turning pre-existing Demoblaze violations into hard failures.
+ * without turning pre-existing violations into hard failures.
  */
 export const scanAccessibility = async (
   page: Page,
