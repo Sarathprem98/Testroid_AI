@@ -96,6 +96,21 @@ If a re-run detects one of these files already present, it pre-selects that tool
 
 Switch later by re-running `testroid init` and picking the other option, or by editing `playwright.config.ts`'s `reporter: [...]` array directly.
 
+## Mobile emulation (mobile-chrome)
+
+`testroid init` asks whether to also run the UI suite against `mobile-chrome` (`devices['Pixel 5']` emulation) alongside the standard desktop `chromium` project — it defaults to **no** (desktop-only), since that matches typical first-run expectations on a new project. Decline it and only `chromium` (plus `api`/`mobile-app`, unaffected by this choice) stays active in `playwright.config.ts`'s `projects: [...]` array, so `npm test` doesn't run mobile emulation you didn't ask for.
+
+Say yes to keep both — `npm test` then runs `chromium` + `mobile-chrome` + `api` + `mobile-app`, same as before this prompt existed. Add it later by re-running `testroid init`, or manually re-adding the `mobile-chrome` project entry to `playwright.config.ts` (see the Testroid template's own copy for the exact shape).
+
+## Network request logging
+
+Every first-party network request/response (same domain as `BASE_URL`) is logged via `logger.network`/`logger.api` (`utils/networkHelper.ts`) during a test run. Third-party requests — analytics/ads/tracking beacons like Facebook Pixel, Google Ads, or Clevertap, which a real commercial site fires constantly and which aren't part of what you're testing — are still allowed to execute normally but are **not** logged by default, to keep the log readable.
+
+To log third-party requests too, set in `.env`:
+```
+LOG_THIRD_PARTY_REQUESTS=true
+```
+
 ## Playwright MCP (optional)
 
 `testroid init` offers to install the [Playwright MCP server](https://github.com/microsoft/playwright-mcp) (`@playwright/mcp`) as a dev dependency and register it in `.mcp.json`. MCP (Model Context Protocol) lets Claude Code — or any other MCP-aware AI client — drive a real browser directly: navigate, click, fill forms, and read the page's accessibility tree as part of a conversation, without you writing or running a Playwright script yourself.

@@ -1,5 +1,6 @@
 import fs from "fs-extra";
 import path from "path";
+import { applyMobileChromeChoice } from "./playwrightConfig";
 
 export async function scaffoldProject(targetDir: string, answers: Record<string, any>) {
   const templateDir = path.join(__dirname, "..", "templates", "default");
@@ -18,6 +19,11 @@ export async function scaffoldProject(targetDir: string, answers: Record<string,
       return true;
     },
   });
+
+  await applyMobileChromeChoice(path.join(targetDir, "playwright.config.ts"), Boolean(answers.includeMobileChrome));
+  if (!answers.includeMobileChrome) {
+    console.log("ℹ️  mobile-chrome (Pixel 5 emulation) project not included — re-run 'testroid init' or edit playwright.config.ts to add it later.");
+  }
 
   const envLines = [`PROJECT_NAME=${answers.projectName}`];
   // Omitted rather than written as `BASE_URL=` when unset: playwright.config.ts falls
