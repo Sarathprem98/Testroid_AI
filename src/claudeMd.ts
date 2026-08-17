@@ -188,14 +188,23 @@ Full details, per-stage docs, naming conventions, the traceability contract, HIT
 Invoke the **Pipeline Orchestrator** (\`docs/agents/PipelineOrchestratorAgent.md\`) for end-to-end runs rather than the stage agents one at a time by hand.`;
 
 /**
- * Shared prose telling Claude Code how to react when a user pastes pipeline-shaped
- * input into chat (a scenario, an epic/ticket reference, manual test cases, ...) —
- * confirm before running any stage, rather than generating tests ad hoc. Identical
- * regardless of target project; stage names/order match `docs/agents/README.md` exactly.
+ * Shared prose telling any AI coding assistant (Claude Code, GitHub Copilot, Cursor, or a
+ * generic AGENTS.md consumer) how to react when a user pastes pipeline-shaped input into
+ * chat (a scenario, an epic/ticket reference, manual test cases, ...) — confirm before
+ * running any stage, rather than generating tests ad hoc. Deliberately placed at the very
+ * top of the generated file (see `insertNearTop`/the sync template below) and opens with an
+ * unmissable stop directive, because tools with weaker instruction-following (observed with
+ * GitHub Copilot) have jumped straight to implementation when this guidance sat further down
+ * the file. Identical regardless of target project; stage names/order match
+ * `docs/agents/README.md` exactly.
  */
-const WORKING_WITH_TEST_INPUT_SECTION = `## Working with test input
+const WORKING_WITH_TEST_INPUT_SECTION = `## STOP: Confirm before writing or running any test code
 
-If a user's message contains a test scenario description, an epic reference (e.g. \`EPIC-123\`), a Jira ticket ID or link, a SPEC file, or a manually-written description — no matter how complete or detailed it looks, including a fully-written scenario or a set of hand-written test cases — treat it as likely input to the Testroid agent pipeline described above, not something to turn into ad hoc tests or code immediately.
+**STOP: Do not write, generate, or run any test code before completing this confirmation step.** This applies to every AI coding assistant reading this file (Claude Code, GitHub Copilot, Cursor, or any other AGENTS.md-style consumer) — no exceptions for tools that default to acting immediately.
+
+If a user's message contains a test scenario description, an epic reference (e.g. \`EPIC-123\`), a Jira ticket ID or link, a SPEC file, or a manually-written description — no matter how complete or detailed it looks, including a fully-written scenario or a set of hand-written test cases — treat it as likely input to Testroid's agent pipeline (Test Plan Generator → Test Case Generator → Normalizer → Reuse Matcher → Implement / API Automator / Mobile Automator → Validator, detailed later in this guide), not something to turn into ad hoc tests or code immediately.
+
+**Do not treat inspection as safe.** Do not immediately inspect the project, check existing conventions, open source files "just to understand the ask," or draft an implementation plan before asking — checking conventions is implementation work in disguise and must also wait for confirmation, exactly like writing the test itself. The only acceptable first response to pipeline-shaped input is the confirmation question below.
 
 - **Confirm before starting, and default to the full pipeline.** Ask something like: "This looks related to the Testroid pipeline — should I run the full pipeline starting from Test Plan Generation through Validation?" Don't start drafting a test plan, test cases, or code before the user answers.
 - **Never infer a later starting stage from how the input looks.** A scenario that already reads like a finished test plan, or a document that already reads like normalized test cases, is not by itself a reason to start anywhere but Stage 1. Detail or completeness in the input is not a signal to skip stages.
@@ -243,11 +252,6 @@ async function readReferenceTemplate(): Promise<string> {
   return fs.readFile(referencePath, "utf8");
 }
 
-/**
- * Fresh-scaffold mode: the target folder was empty, so there's no existing project to
- * reflect. Pulls Testroid's own generic reference (`templates/default/CLAUDE.md`) and
- * inserts a short project-config callout — the body stays generic, not tied to any site.
- */
 function insertBeforeReports(content: string, section: string): string {
   const reportsHeading = "\n## Reports";
   const at = content.indexOf(reportsHeading);
@@ -256,20 +260,34 @@ function insertBeforeReports(content: string, section: string): string {
   return `${content.slice(0, at)}\n${section}\n${content.slice(at)}`;
 }
 
+/**
+ * Inserts `section` right after the intro paragraph and before the first `## ` heading —
+ * i.e. as close to the top of the file as possible, just below the title/project callout.
+ * Used to put `WORKING_WITH_TEST_INPUT_SECTION` where it gets read first, since instructions
+ * earlier in a file are generally weighted more heavily by AI coding assistants.
+ */
+function insertNearTop(content: string, section: string): string {
+  const marker = "\n## ";
+  const at = content.indexOf(marker);
+  if (at === -1) return `${content.trimEnd()}\n\n${section}\n`;
+
+  const head = content.slice(0, at).replace(/\n+$/, "");
+  return `${head}\n\n${section}\n${content.slice(at)}`;
+}
+
+/**
+ * Fresh-scaffold mode: the target folder was empty, so there's no existing project to
+ * reflect. Pulls Testroid's own generic reference (`templates/default/CLAUDE.md`), inserts
+ * the project-config callout plus the test-input confirmation directive right after the
+ * intro paragraph (near the top, ahead of everything else), and the reporting section near
+ * the bottom — the body otherwise stays generic, not tied to any site.
+ */
 async function buildFreshAssistantGuide(answers: AssistantGuideAnswers): Promise<string> {
   const reference = await readReferenceTemplate();
-  const withTestInput = insertBeforeReports(reference, WORKING_WITH_TEST_INPUT_SECTION);
-  const withSection = insertBeforeReports(withTestInput, buildReportingSection(answers.reportChoice));
+  const withReporting = insertBeforeReports(reference, buildReportingSection(answers.reportChoice));
 
-  const callout = projectCallout(answers);
-  if (!callout) return withSection;
-
-  // Insert the callout right after the first paragraph (the "guidance to Claude Code" line).
-  const marker = "\n\n";
-  const splitAt = withSection.indexOf(marker, withSection.indexOf(marker) + marker.length);
-  if (splitAt === -1) return callout + withSection;
-
-  return withSection.slice(0, splitAt + marker.length) + callout + withSection.slice(splitAt + marker.length);
+  const topSection = `${projectCallout(answers)}${WORKING_WITH_TEST_INPUT_SECTION}`;
+  return insertNearTop(withReporting, topSection);
 }
 
 function describeFolder(folder: string): string {
@@ -337,7 +355,9 @@ function buildSyncAssistantGuide(
 
 This file provides guidance to your AI coding assistant (Claude Code, GitHub Copilot, Cursor, or similar) when working with code in this repository.
 
-${projectCallout(answers)}## What this repo is
+${projectCallout(answers)}${WORKING_WITH_TEST_INPUT_SECTION}
+
+## What this repo is
 
 An existing ${profile.language} project (\`${profile.name}\`)${profile.testRunners.length ? ` already using ${profile.testRunners.join(" + ")} for testing` : ""} before Testroid was added via \`testroid init\`. Testroid merges its AI agent pipeline and Page Object/API/Mobile automation framework into projects like this **without overwriting anything that already existed** — see "What Testroid added" below for exactly what changed.
 
@@ -371,8 +391,6 @@ ${skippedList}
 \`package.json\` \`dependencies\`/\`devDependencies\` were merged (Testroid's added only where a package of the same name wasn't already present); existing versions always win on conflict. \`.env\` was created or had missing keys appended, never overwritten.
 
 ${PIPELINE_SECTION}
-
-${WORKING_WITH_TEST_INPUT_SECTION}
 
 ${buildReportingSection(answers.reportChoice)}
 
