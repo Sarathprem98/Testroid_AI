@@ -93,12 +93,12 @@ export async function syncIntoExistingProject(
 
   // 4. Merge or create .env
   const envPath = path.join(targetDir, ".env");
-  const newEnvLines = [
-  `PROJECT_NAME=${answers.projectName}`,
-  `BASE_URL=${answers.baseUrl}`,
-  `SUITE_TYPE=${answers.suiteType}`,
-  `ENVIRONMENT=${answers.environment}`,
-];
+  const newEnvLines = [`PROJECT_NAME=${answers.projectName}`];
+  // Omitted rather than written as `BASE_URL=` when unset — see scaffold.ts's matching
+  // comment: playwright.config.ts's `process.env.BASE_URL ?? '...'` fallback only kicks in
+  // when the key is absent, not when it's an empty string.
+  if (answers.baseUrl) newEnvLines.push(`BASE_URL=${answers.baseUrl}`);
+  newEnvLines.push(`SUITE_TYPE=${answers.suiteType}`, `ENVIRONMENT=${answers.environment}`);
 
   if (await fs.pathExists(envPath)) {
     const existing = await fs.readFile(envPath, "utf8");

@@ -84,6 +84,12 @@ function printNextSteps(
 
   console.log(chalk.bold.cyan("📋 Next steps:"));
 
+  if (!answers.baseUrl) {
+    console.log(
+      `  ${chalk.dim("•")} ${chalk.yellow("BASE_URL isn't set yet")} ${chalk.dim("— add it to .env before running tests, or they'll target an empty/invalid URL.")}`
+    );
+  }
+
   if (testsAreEmpty) {
     console.log(
       `  ${chalk.dim("•")} ${chalk.dim("Your tests/ folder is empty — write a spec, or give your AI assistant a scenario/ticket to generate one via the pipeline, then run:")} ${chalk.cyan(`${cd}${testCommand}`)}`

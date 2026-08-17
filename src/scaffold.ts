@@ -19,12 +19,14 @@ export async function scaffoldProject(targetDir: string, answers: Record<string,
     },
   });
 
-  const envContent = [
-  `PROJECT_NAME=${answers.projectName}`,
-  `BASE_URL=${answers.baseUrl}`,
-  `SUITE_TYPE=${answers.suiteType}`,
-  `ENVIRONMENT=${answers.environment}`
-].join("\n");
+  const envLines = [`PROJECT_NAME=${answers.projectName}`];
+  // Omitted rather than written as `BASE_URL=` when unset: playwright.config.ts falls
+  // back to a placeholder via `process.env.BASE_URL ?? '...'`, which only kicks in when
+  // the key is absent — an empty string would satisfy `??` and silently point tests at "".
+  if (answers.baseUrl) envLines.push(`BASE_URL=${answers.baseUrl}`);
+  envLines.push(`SUITE_TYPE=${answers.suiteType}`, `ENVIRONMENT=${answers.environment}`);
+
+  const envContent = envLines.join("\n");
 
   await fs.writeFile(path.join(targetDir, ".env"), envContent);
 

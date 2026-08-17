@@ -83,6 +83,24 @@ async function detectExistingPlaywrightMcp(targetDir: string): Promise<boolean> 
 }
 
 /**
+ * Existing base URL to pre-fill the Base URL prompt with, checked in priority order: an
+ * existing .env's BASE_URL key first, falling back to a literal `baseURL: '...'` value
+ * already wired into playwright.config.ts's `use` block (a synced-in project may define
+ * its target there instead of via .env). Uses the same lightweight string/regex matching
+ * approach as this file's own detectConfiguredReporter and src/reporting.ts's config
+ * parsing, rather than a full AST parse, for consistency with those.
+ */
+async function detectExistingBaseUrl(targetDir: string, existingEnv: Record<string, string>): Promise<string | undefined> {
+  if (existingEnv.BASE_URL) return existingEnv.BASE_URL;
+
+  const configPath = path.join(targetDir, "playwright.config.ts");
+  if (!(await fs.pathExists(configPath))) return undefined;
+
+  const content = await fs.readFile(configPath, "utf8").catch(() => "");
+  return /baseURL\s*:\s*['"`]([^'"`]+)['"`]/.exec(content)?.[1];
+}
+
+/**
  * Which of "allure" | "ortoni" is already wired into the target's playwright.config.ts
  * reporter array, if it unambiguously has exactly one of them. Undefined if there's no
  * existing config, neither is present, or both are (no single existing choice to reflect).
@@ -120,6 +138,7 @@ export async function runPrompts(targetDir: string, options: RunPromptsOptions =
   const hasExistingPlaywrightMcp = await detectExistingPlaywrightMcp(targetDir);
   const configuredReporter = await detectConfiguredReporter(targetDir);
   const detectedAiAssistant = await detectExistingAiAssistant(targetDir);
+  const detectedBaseUrl = await detectExistingBaseUrl(targetDir, existing);
 
   if (skipPrompts) {
     // Every other field below has a safe, generic fallback (a placeholder project name,
@@ -127,8 +146,9 @@ export async function runPrompts(targetDir: string, options: RunPromptsOptions =
     // of per-project data that's arbitrary and load-bearing — silently defaulting it (e.g.
     // to "http://localhost") would let `--yes` succeed while quietly pointing every
     // generated test at the wrong target. So it's the one field with no built-in default:
-    // callers must supply it via --url, or already have BASE_URL in an existing .env.
-    const resolvedBaseUrl = baseUrl ?? existing.BASE_URL;
+    // callers must supply it via --url, or already have one detectable (existing .env or
+    // playwright.config.ts) via detectExistingBaseUrl above.
+    const resolvedBaseUrl = baseUrl ?? detectedBaseUrl;
     if (!resolvedBaseUrl) {
       throw new MissingBaseUrlError();
     }
@@ -170,10 +190,17 @@ export async function runPrompts(targetDir: string, options: RunPromptsOptions =
     {
       type: "text",
       name: "baseUrl",
-      message: "Base URL of the website to test?",
-      initial: existing.BASE_URL ?? "",
+      // Pre-fill rather than auto-accept a detected value without asking: unlike the
+      // AI-assistant/reporter detections above (which only affect which choice is
+      // highlighted), silently locking in a URL here could point every generated test at
+      // the wrong target if the detected value is stale or a placeholder. Pre-filling keeps
+      // the "just press Enter" convenience while still surfacing the value for a quick look.
+      message: detectedBaseUrl
+        ? "Base URL (detected — press Enter to accept, or leave blank to add later)"
+        : "Base URL (optional — leave blank to add later)",
+      initial: detectedBaseUrl ?? "",
       validate: (value: string) =>
-        value.startsWith("http") ? true : "Enter a valid URL (starting with http/https)"
+        !value || value.startsWith("http") ? true : "Enter a valid URL (starting with http/https), or leave blank"
     },
     {
       type: "select",
