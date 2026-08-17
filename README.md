@@ -1,5 +1,7 @@
 # Testroid
 
+![Testroid](https://raw.githubusercontent.com/Sarathprem98/Testroid_AI/main/docs/testroid-banner.png)
+
 [![CI](https://github.com/Sarathprem98/Testroid_AI/actions/workflows/ci.yml/badge.svg)](https://github.com/Sarathprem98/Testroid_AI/actions/workflows/ci.yml)
 
 AI-powered, multi-agent Playwright test automation framework generator — scaffold a complete, ready-to-run test framework into any project with a single command.
