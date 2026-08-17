@@ -44,7 +44,6 @@ export interface PromptAnswers {
   baseUrl: string;
   suiteType: string;
   environment: string;
-  includeMobileChrome: boolean;
   installPlaywrightMcp: boolean;
   aiAssistant: AiAssistantChoice;
   reportChoice: "allure" | "ortoni";
@@ -102,21 +101,6 @@ async function detectExistingBaseUrl(targetDir: string, existingEnv: Record<stri
 }
 
 /**
- * True if a synced-in playwright.config.ts already has the `mobile-chrome` project wired
- * in — used to pre-fill the "include mobile-chrome" prompt on a re-run so it reflects the
- * choice made last time rather than always resetting to the opt-out default. Undefined (not
- * false) when there's no existing config at all, since that's "never asked yet" rather than
- * "asked and declined" — the prompt's own `initial: false` covers that case instead.
- */
-async function detectExistingMobileChrome(targetDir: string): Promise<boolean | undefined> {
-  const configPath = path.join(targetDir, "playwright.config.ts");
-  if (!(await fs.pathExists(configPath))) return undefined;
-
-  const content = await fs.readFile(configPath, "utf8").catch(() => "");
-  return content.includes("name: 'mobile-chrome'");
-}
-
-/**
  * Which of "allure" | "ortoni" is already wired into the target's playwright.config.ts
  * reporter array, if it unambiguously has exactly one of them. Undefined if there's no
  * existing config, neither is present, or both are (no single existing choice to reflect).
@@ -155,7 +139,6 @@ export async function runPrompts(targetDir: string, options: RunPromptsOptions =
   const configuredReporter = await detectConfiguredReporter(targetDir);
   const detectedAiAssistant = await detectExistingAiAssistant(targetDir);
   const detectedBaseUrl = await detectExistingBaseUrl(targetDir, existing);
-  const detectedMobileChrome = await detectExistingMobileChrome(targetDir);
 
   if (skipPrompts) {
     // Every other field below has a safe, generic fallback (a placeholder project name,
@@ -183,9 +166,6 @@ export async function runPrompts(targetDir: string, options: RunPromptsOptions =
       baseUrl: resolvedBaseUrl,
       suiteType,
       environment,
-      // Mirrors the interactive prompt's default: opt-out unless a prior sync already
-      // wired mobile-chrome in.
-      includeMobileChrome: detectedMobileChrome ?? false,
       // Matches the interactive prompt's own default (`initial: true`), which is always
       // "Yes" regardless of whether an MCP config already exists — see the message text
       // above, which only changes the wording, never the default answer.
@@ -239,12 +219,6 @@ export async function runPrompts(targetDir: string, options: RunPromptsOptions =
       initial: existing.ENVIRONMENT
         ? ENVIRONMENT_CHOICES.findIndex((choice) => choice.value === existing.ENVIRONMENT)
         : 0
-    },
-    {
-      type: "confirm",
-      name: "includeMobileChrome",
-      message: "Also run tests against mobile-chrome (Pixel 5 emulation) alongside desktop chromium?",
-      initial: detectedMobileChrome ?? false
     },
     {
       type: "confirm",

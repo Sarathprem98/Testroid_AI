@@ -1,7 +1,6 @@
 import fs from "fs-extra";
 import path from "path";
 import deepmerge from "deepmerge";
-import { applyMobileChromeChoice } from "./playwrightConfig";
 
 export type SyncResult = {
   added: string[];
@@ -88,12 +87,6 @@ export async function syncIntoExistingProject(
       path.join(templateDir, "playwright.config.ts"),
       targetConfigPath
     );
-    // Only ever applied to the config we just copied in above — an existing
-    // playwright.config.ts (the branch above) is never touched, mobile-chrome choice or not.
-    await applyMobileChromeChoice(targetConfigPath, Boolean(answers.includeMobileChrome));
-    if (!answers.includeMobileChrome) {
-      console.log("ℹ️  mobile-chrome (Pixel 5 emulation) project not included — re-run 'testroid init' or edit playwright.config.ts to add it later.");
-    }
     console.log("✅ Added playwright.config.ts");
     added.push("playwright.config.ts");
   }

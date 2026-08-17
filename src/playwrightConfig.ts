@@ -1,5 +1,12 @@
 import fs from "fs-extra";
 
+// Not currently wired into `testroid init` — mobile-chrome inclusion used to be an install-time
+// prompt (scaffold.ts/sync.ts called applyMobileChromeChoice after copying playwright.config.ts
+// in), but that's now a per-scenario call the AI assistant makes at pipeline-run time instead
+// (see WORKING_WITH_TEST_INPUT_SECTION in src/claudeMd.ts) — mobile-chrome is always present in
+// the generated config again. Kept here as a building block in case a future flow (e.g. an
+// agent stripping/restoring the project programmatically) needs it.
+
 /**
  * Strips the `{ name: 'mobile-chrome', ... }` project entry out of a playwright.config.ts
  * source string's `projects: [...]` array, via brace-depth counting (mirrors
@@ -44,11 +51,10 @@ export function removeMobileChromeProject(source: string): string {
 }
 
 /**
- * Applies the mobile-chrome opt-in choice to a playwright.config.ts just written at
+ * Applies a mobile-chrome opt-in choice to a playwright.config.ts just written at
  * `configPath` — a no-op when `includeMobileChrome` is true (the template already includes
- * the project) so callers can call this unconditionally after copying the file in. Only ever
- * called against a freshly-copied Testroid config, never one an existing project already
- * owned — see scaffold.ts/sync.ts call sites.
+ * the project) so callers can call this unconditionally after copying the file in. Intended
+ * only for a freshly-copied Testroid config, never one an existing project already owned.
  */
 export async function applyMobileChromeChoice(configPath: string, includeMobileChrome: boolean): Promise<void> {
   if (includeMobileChrome) return;
