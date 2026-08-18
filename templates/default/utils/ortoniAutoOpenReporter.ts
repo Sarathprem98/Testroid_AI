@@ -3,6 +3,11 @@ import { spawn } from 'child_process';
 import path from 'path';
 import { logger } from './logger';
 
+interface OrtoniAutoOpenOptions {
+  folderPath?: string;
+  filename?: string;
+}
+
 /**
  * Opens the Ortoni report after every local run without blocking process exit.
  *
@@ -15,10 +20,19 @@ import { logger } from './logger';
  * auto-open reporter's approach.
  */
 export default class OrtoniAutoOpenReporter implements Reporter {
+  constructor(private options: OrtoniAutoOpenOptions = {}) {}
+
   async onExit(): Promise<void> {
     if (process.env.CI) return;
 
-    const reportPath = path.resolve(__dirname, '..', 'ortoni-report', 'index.html');
+    // ortoni-report itself resolves folderPath/filename against process.cwd() when it writes
+    // the file (not against this file's own location) — resolving via __dirname here instead
+    // diverges the moment Playwright runs with a cwd other than the project root (e.g. invoked
+    // with --config from a parent/monorepo directory), silently opening a stale or nonexistent
+    // report from a previous run instead of the one this run just generated.
+    const folderPath = this.options.folderPath ?? 'ortoni-report';
+    const filename = this.options.filename ?? 'index.html';
+    const reportPath = path.resolve(process.cwd(), folderPath, filename);
 
     try {
       if (process.platform === 'win32') {

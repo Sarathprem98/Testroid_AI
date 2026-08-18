@@ -67,7 +67,7 @@ export default defineConfig({
     ['allure-playwright', { outputFolder: 'allure-results', suiteTitle: false, detail: true }],
     ['./utils/allureReportGenerator.ts'],
     ['ortoni-report', ortoniReportConfig],
-    ['./utils/ortoniAutoOpenReporter.ts'],
+    ['./utils/ortoniAutoOpenReporter.ts', { folderPath: ortoniReportConfig.folderPath, filename: ortoniReportConfig.filename }],
   ],
   outputDir: 'test-results/artifacts',
   use: {

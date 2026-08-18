@@ -42,7 +42,7 @@ const ORTONI_ENTRIES =
       filename: 'index.html',
       title: 'Ortoni Test Report',
     }],
-    ['./utils/ortoniAutoOpenReporter.ts'],`;
+    ['./utils/ortoniAutoOpenReporter.ts', { folderPath: 'ortoni-report', filename: 'index.html' }],`;
 
 // Matches a reporter entry `['<name>', ...]` or `['<name>']` non-greedily up to its own
 // closing `]` — safe because none of these entries' configs contain array literals, only
@@ -53,7 +53,7 @@ const ALLURE_ENTRY_PATTERNS = [
 ];
 const ORTONI_ENTRY_PATTERNS = [
   /\[\s*['"]ortoni-report['"]\s*,[\s\S]*?\]\s*,?\s*\n?/,
-  /\[\s*['"]\.\/utils\/ortoniAutoOpenReporter\.ts['"]\s*\]\s*,?\s*\n?/,
+  /\[\s*['"]\.\/utils\/ortoniAutoOpenReporter\.ts['"]\s*(,[\s\S]*?)?\]\s*,?\s*\n?/,
 ];
 
 async function getInstalledDeps(targetDir: string): Promise<Record<string, string>> {
