@@ -5,7 +5,7 @@ import chalk from "chalk";
 import ora from "ora";
 import { getExecaErrorDetail } from "./execaError";
 
-const MCP_PACKAGE = "@playwright/mcp";
+export const MCP_PACKAGE = "@playwright/mcp";
 // Exact pin (no ^ or @latest) — this is fetched by `npx` at CLI runtime on every
 // user's machine, so an unpinned version is the highest-risk drift point in the
 // project. Pinned to avoid breaking changes — review periodically.
@@ -56,14 +56,23 @@ async function installMcpPackage(targetDir: string): Promise<void> {
   }
 }
 
-async function writeMcpConfig(targetDir: string): Promise<void> {
+export interface McpConfigResult {
+  /** True = .mcp.json didn't exist before and was created fresh by this call. */
+  configCreated: boolean;
+  /** True = the "playwright" server entry was actually written this call — whether into a
+   * fresh file (configCreated) or merged into a pre-existing one. False if it was already
+   * registered and nothing was touched. */
+  configEntryAdded: boolean;
+}
+
+async function writeMcpConfig(targetDir: string): Promise<McpConfigResult> {
   const configPath = path.join(targetDir, ".mcp.json");
   const exists = await fs.pathExists(configPath);
   const existing = exists ? await fs.readJson(configPath).catch(() => ({})) : {};
 
   if (existing?.mcpServers?.[MCP_SERVER_NAME]) {
     console.log(chalk.dim("⏭️  .mcp.json already registers the playwright MCP server — not touched"));
-    return;
+    return { configCreated: false, configEntryAdded: false };
   }
 
   const merged = {
@@ -82,9 +91,33 @@ async function writeMcpConfig(targetDir: string): Promise<void> {
         : "✅ Created .mcp.json with the playwright MCP server"
     )
   );
+
+  return { configCreated: !exists, configEntryAdded: true };
 }
 
-export async function installPlaywrightMcp(targetDir: string): Promise<void> {
+/** Removes just the "playwright" entry from .mcp.json's mcpServers — used by `testroid
+ * undo` when that entry was merged into a .mcp.json that already existed before Testroid
+ * touched it (a freshly-created .mcp.json is deleted outright instead, never via this). */
+export async function removeMcpServerEntry(targetDir: string): Promise<void> {
+  const configPath = path.join(targetDir, ".mcp.json");
+  if (!(await fs.pathExists(configPath))) return;
+
+  const existing = await fs.readJson(configPath).catch(() => undefined);
+  if (!existing?.mcpServers?.[MCP_SERVER_NAME]) return;
+
+  const remainingServers = { ...existing.mcpServers };
+  delete remainingServers[MCP_SERVER_NAME];
+
+  await fs.writeJson(configPath, { ...existing, mcpServers: remainingServers }, { spaces: 2 });
+}
+
+export interface McpInstallResult {
+  /** True = "@playwright/mcp" was newly added to package.json's devDependencies this run. */
+  packageAdded: boolean;
+  config: McpConfigResult;
+}
+
+export async function installPlaywrightMcp(targetDir: string): Promise<McpInstallResult> {
   const alreadyInstalled = await isPlaywrightMcpInstalled(targetDir);
 
   if (alreadyInstalled) {
@@ -93,5 +126,6 @@ export async function installPlaywrightMcp(targetDir: string): Promise<void> {
     await installMcpPackage(targetDir);
   }
 
-  await writeMcpConfig(targetDir);
+  const config = await writeMcpConfig(targetDir);
+  return { packageAdded: !alreadyInstalled, config };
 }

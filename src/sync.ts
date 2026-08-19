@@ -5,7 +5,20 @@ import deepmerge from "deepmerge";
 export type SyncResult = {
   added: string[];
   skipped: string[];
+  /** package.json keys this run actually added — never a key that already existed, even
+   * when the template also ships one of the same name (existing values always win). */
+  packageJsonAdded: {
+    dependencies: string[];
+    devDependencies: string[];
+    scripts: string[];
+  };
 };
+
+/** Keys present in `merged` but absent from `original` — i.e. genuinely new this run. */
+function newKeys(original: Record<string, unknown> | undefined, merged: Record<string, unknown>): string[] {
+  const existingKeys = new Set(Object.keys(original ?? {}));
+  return Object.keys(merged).filter((key) => !existingKeys.has(key));
+}
 
 export async function syncIntoExistingProject(
   targetDir: string,
@@ -20,6 +33,12 @@ export async function syncIntoExistingProject(
   const targetPkg = await fs.readJson(targetPkgPath);
   const templatePkg = await fs.readJson(templatePkgPath);
 
+  // Spreading targetPkg first and only overriding dependencies/devDependencies/scripts below
+  // means "name" (and every other field — version, description, ...) always passes through
+  // from the existing project untouched. That's deliberate, not incidental: changing an
+  // existing project's package.json "name" could break CI, publishing, or workspace
+  // references that depend on it, so sync must never set it — unlike scaffold.ts, which
+  // writes the user's answer into a fresh package.json with nothing to protect.
   const mergedPkg = {
     ...targetPkg,
     dependencies: {
@@ -38,6 +57,12 @@ export async function syncIntoExistingProject(
 
   await fs.writeJson(targetPkgPath, mergedPkg, { spaces: 2 });
   console.log("✅ Merged package.json (existing scripts/deps preserved)");
+
+  const packageJsonAdded = {
+    dependencies: newKeys(targetPkg.dependencies, mergedPkg.dependencies),
+    devDependencies: newKeys(targetPkg.devDependencies, mergedPkg.devDependencies),
+    scripts: newKeys(targetPkg.scripts, mergedPkg.scripts),
+  };
 
   // 2. Copy framework files that don't already exist
   const skipTopLevel = new Set([
@@ -117,9 +142,10 @@ export async function syncIntoExistingProject(
   } else {
     await fs.writeFile(envPath, newEnvLines.join("\n"));
     console.log("✅ Created .env");
+    added.push(".env");
   }
 
   console.log(`\n📦 Sync complete: ${added.length} added, ${skipped.length} skipped (already existed)`);
 
-  return { added, skipped };
+  return { added, skipped, packageJsonAdded };
 }

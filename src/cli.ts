@@ -17,6 +17,7 @@ checkNodeVersion(process.version);
 // by the TS/esbuild CJS output, which would defeat the check's purpose.
 const { Command } = require("commander") as typeof import("commander");
 const { initCommand } = require("./commands/init") as typeof import("./commands/init");
+const { undoCommand } = require("./commands/undo") as typeof import("./commands/undo");
 // chalk ships as pure ESM (no CJS build) — required here via Node's native require(esm)
 // interop, the same approach already used for execa across this codebase's CJS build.
 // Its default export has to be unwrapped by hand (`.default`) since this file uses
@@ -107,6 +108,14 @@ program
   .action(async (options: { yes?: boolean; url?: string }) => {
     printBanner();
     await initCommand(options);
+  });
+
+program
+  .command("undo")
+  .description("Remove exactly what a previous 'testroid init' added to this project")
+  .action(async () => {
+    printBanner();
+    await undoCommand();
   });
 
 program.parse();

@@ -8,3 +8,7 @@ node_modules/
 /playwright/.auth/
 /allure-results/
 /allure-report/
+
+# Testroid's own record of what it added, used by `testroid undo` — local installation
+# bookkeeping, not project source of truth.
+.testroid-manifest.json

@@ -28,19 +28,34 @@ npx testroid init --yes --url https://example.com
 
 This skips every prompt and uses sensible defaults (Smoke suite, QA environment, Playwright MCP enabled, Allure reporting, whichever AI assistant config is already detected) — the base URL is the one thing it can't default, so `--url` is required unless `BASE_URL` is already set in `.env`.
 
+To cleanly remove what Testroid added — the reverse of `testroid init` — run `testroid undo`:
+
+```bash
+npx testroid undo
+```
+
+This only works inside a project that has a `.testroid-manifest.json` at its root (written by the `init` run that set the project up, recording exactly what it added). `testroid undo` reads it, shows you a full summary of what's about to happen, and asks for confirmation before deleting anything:
+- every file/folder Testroid added
+- the specific `package.json` dependency/script keys Testroid added — never a pre-existing key, even one with the same name
+- for `.mcp.json` and `playwright.config.ts`: the whole file if Testroid created it fresh (already covered by the files/folders above), or just the entry Testroid added if it was merged into a file that already existed — never the rest of that file
+
+Nothing that existed before Testroid touched this project is removed. If `.testroid-manifest.json` isn't present (already used, or this project wasn't set up by Testroid), it says so and exits without doing anything.
+
 Run the full suite:
 ```bash
 npx playwright test
 ```
 
+This runs all four Playwright projects: `chromium` (desktop), `mobile-chrome` (`devices['Pixel 5']` emulation of the same UI specs — always defined, not something you opt into at setup time), `api`, and `mobile-app`. Whether a given UI scenario actually needs to target `mobile-chrome` is a per-ticket judgment call the AI pipeline makes by reading the scenario's own content (mobile-specific wording, touch gestures, an explicit mobile tag) at implementation time, not a question asked during `testroid init`.
+
 ## Structure
 
-- `docs/agents/` — multi-agent test generation pipeline (plan, generate, normalize, reuse-match, implement, validate)
+- `docs/agents/` — multi-agent test generation pipeline (plan, generate, normalize, reuse-match, implement, validate), run end-to-end as one continuous flow by the Pipeline Orchestrator rather than stage-by-stage — see `docs/agents/README.md`
 - `pages/` — Page Object Model classes for your site, all extending `pages/BasePage.ts`
 - `locators/` — `locatorConstants.ts`, the auto-healing locator definitions your Page Objects use
 - `skills/` — Claude Code Skills documenting this framework's conventions
 - `api/` — API client and fixtures
-- `mobile/` — mobile automation support
+- `mobile/` — native/hybrid mobile *app* automation support via Appium — distinct from the `mobile-chrome` Playwright project above, which is mobile *web* emulation of the regular UI suite
 - `docs/` — agent documentation and generated pipeline output
 - `tests/` — Playwright test specs
 
@@ -100,16 +115,32 @@ Switch later by re-running `testroid init` and picking the other option, or by e
 
 Every first-party network request/response (same domain as `BASE_URL`) is logged via `logger.network`/`logger.api` (`utils/networkHelper.ts`) during a test run. Third-party requests — analytics/ads/tracking beacons like Facebook Pixel, Google Ads, or Clevertap, which a real commercial site fires constantly and which aren't part of what you're testing — are still allowed to execute normally but are **not** logged by default, to keep the log readable.
 
+By default the log stays deliberately bare — one line per completed request with just enough to scan for success/failure, no URL:
+```
+[NETWORK] GET → 200 (152ms)
+[NETWORK] POST → 201 (110ms)
+[NETWORK] Failed request: GET /inventory → 500 (343ms)
+```
+A failed request still shows its last path segment (e.g. `/inventory`) as a minimal hint of what failed, since a bare status code isn't enough to tell same-status failures apart.
+
 To log third-party requests too, set in `.env`:
 ```
 LOG_THIRD_PARTY_REQUESTS=true
 ```
+
+For full detail — the full URL on every line, plus POST payloads and JSON response bodies — set in `.env`:
+```
+LOG_VERBOSE_NETWORK=true
+```
+This also disables the noise filters and body/path truncation, so everything logs in full regardless of domain, pattern match, or size. Use it for deep debugging, not everyday runs.
 
 ## Playwright MCP (optional)
 
 `testroid init` offers to install the [Playwright MCP server](https://github.com/microsoft/playwright-mcp) (`@playwright/mcp`) as a dev dependency and register it in `.mcp.json`. MCP (Model Context Protocol) lets Claude Code — or any other MCP-aware AI client — drive a real browser directly: navigate, click, fill forms, and read the page's accessibility tree as part of a conversation, without you writing or running a Playwright script yourself.
 
 For a Testroid project, that's useful for things like exploring an unfamiliar page to figure out what locators/roles to add to `locators/locatorConstants.ts`, reproducing a flaky test interactively, or letting an agent verify a flow live before it writes the corresponding spec. It's independent of the `mobile-app` project's Appium/WebdriverIO layer — this is browser automation for the AI assistant itself, not part of the test suite that runs in CI.
+
+When `.mcp.json` registers the `playwright` server, the pipeline's own generated guidance asks — right before Implementation starts writing locators — whether to use it to inspect the live page interactively or stick with the semantic auto-healing strategy without live inspection. No `.mcp.json` entry means no question: it proceeds straight to the auto-healing strategy.
 
 Say yes at the `testroid init` prompt to opt in (installs `@playwright/mcp` and writes/merges the `playwright` entry into `.mcp.json`), or skip it and add it later with:
 

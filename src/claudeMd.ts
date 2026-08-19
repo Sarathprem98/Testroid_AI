@@ -1,5 +1,6 @@
 import fs from "fs-extra";
 import path from "path";
+import { detectProjectName } from "./detect";
 
 export type AssistantGuideAnswers = {
   projectName?: string;
@@ -147,7 +148,7 @@ export async function scanExistingProject(targetDir: string): Promise<ProjectPro
   const hasCI = await fs.pathExists(path.join(targetDir, ".github", "workflows"));
 
   return {
-    name: pkg.name || path.basename(targetDir),
+    name: await detectProjectName(targetDir),
     language: hasTypeScript ? "TypeScript" : "JavaScript",
     testRunners: [...new Set(testRunners)],
     otherLibraries: [...new Set(otherLibraries)],

@@ -15,61 +15,66 @@ alwaysApply: true
 
 `;
 
-async function writeIfAbsent(filePath: string, label: string, content: string): Promise<void> {
+/** Returns true if the file was actually written (didn't already exist), false if it was
+ * left untouched. */
+async function writeIfAbsent(filePath: string, label: string, content: string): Promise<boolean> {
   if (await fs.pathExists(filePath)) {
     console.log(`⏭️  ${label} already exists — not touched.`);
-    return;
+    return false;
   }
   await fs.writeFile(filePath, content);
   console.log(`✅ ${label} generated`);
+  return true;
 }
 
 /**
  * Writes Testroid's generated AI-assistant guidance (`src/claudeMd.ts`'s tool-agnostic
  * `generateAssistantGuide` output) to whichever location the chosen tool expects. Never
  * overwrites an existing file — same non-destructive principle as the rest of `testroid init`.
+ *
+ * Returns the path (relative to targetDir) that was actually written, or undefined if
+ * nothing was written (already existed, or `tool` is "skip") — used to record exactly what
+ * to remove in the undo manifest.
  */
 export async function writeAiAssistantConfig(
   targetDir: string,
   tool: AiAssistantChoice,
   content: string
-): Promise<void> {
+): Promise<string | undefined> {
   switch (tool) {
     case "claude-code":
-      await writeIfAbsent(path.join(targetDir, "CLAUDE.md"), "CLAUDE.md", content);
-      return;
+      return (await writeIfAbsent(path.join(targetDir, "CLAUDE.md"), "CLAUDE.md", content))
+        ? "CLAUDE.md"
+        : undefined;
 
     case "copilot": {
-      const githubDir = path.join(targetDir, ".github");
-      await fs.ensureDir(githubDir);
-      await writeIfAbsent(
-        path.join(githubDir, "copilot-instructions.md"),
-        ".github/copilot-instructions.md",
-        content
-      );
-      return;
+      const relativePath = path.join(".github", "copilot-instructions.md");
+      await fs.ensureDir(path.join(targetDir, ".github"));
+      const wrote = await writeIfAbsent(path.join(targetDir, relativePath), relativePath, content);
+      return wrote ? relativePath : undefined;
     }
 
     case "cursor": {
-      const rulesDir = path.join(targetDir, ".cursor", "rules");
-      await fs.ensureDir(rulesDir);
-      await writeIfAbsent(
-        path.join(rulesDir, "testroid.mdc"),
-        ".cursor/rules/testroid.mdc",
+      const relativePath = path.join(".cursor", "rules", "testroid.mdc");
+      await fs.ensureDir(path.join(targetDir, ".cursor", "rules"));
+      const wrote = await writeIfAbsent(
+        path.join(targetDir, relativePath),
+        relativePath,
         CURSOR_RULE_FRONTMATTER + content
       );
-      return;
+      return wrote ? relativePath : undefined;
     }
 
     case "other":
-      await writeIfAbsent(path.join(targetDir, "AGENTS.md"), "AGENTS.md", content);
-      return;
+      return (await writeIfAbsent(path.join(targetDir, "AGENTS.md"), "AGENTS.md", content))
+        ? "AGENTS.md"
+        : undefined;
 
     case "skip":
       console.log(
         "⏭️  Skipped AI assistant config file — add one later: CLAUDE.md, " +
         ".github/copilot-instructions.md, .cursor/rules/testroid.mdc, or AGENTS.md."
       );
-      return;
+      return undefined;
   }
 }

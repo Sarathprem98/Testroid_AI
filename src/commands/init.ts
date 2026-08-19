@@ -8,8 +8,9 @@ import { syncIntoExistingProject } from "../sync";
 import { runNpmInstall, runPlaywrightInstall } from "../install";
 import { generateAssistantGuide, scanExistingProject } from "../claudeMd";
 import { writeAiAssistantConfig, type AiAssistantChoice } from "../aiConfig";
-import { installPlaywrightMcp, MCP_INSTALL_MANUAL_COMMAND } from "../mcp";
+import { installPlaywrightMcp, MCP_INSTALL_MANUAL_COMMAND, MCP_PACKAGE, type McpInstallResult } from "../mcp";
 import { configureReporting, getReportingManualInstallCommand } from "../reporting";
+import { writeManifest, resolveTestroidVersion, type TestroidManifest } from "../manifest";
 
 // Mirrors the paths written by src/aiConfig.ts's writeAiAssistantConfig — kept here (rather
 // than imported) since that module's switch statement builds each path alongside directory
@@ -132,14 +133,16 @@ interface StepFailure {
 // manual command to recover) rather than thrown, so one step failing — e.g. a
 // network drop during the Playwright browser download — doesn't abort the
 // remaining independent steps or leave the user with just a raw stack trace.
-async function runTrackedStep(
+// Returns the step's own result on success, or undefined on failure — callers that need to
+// record what a step actually added to the undo manifest treat "undefined" as "nothing".
+async function runTrackedStep<T>(
   failures: StepFailure[],
   label: string,
   manualCommand: string,
-  fn: () => Promise<void>
-): Promise<void> {
+  fn: () => Promise<T>
+): Promise<T | undefined> {
   try {
-    await fn();
+    return await fn();
   } catch (err) {
     // Prefer execa's `shortMessage` (e.g. "Command failed with exit code 1: npm install")
     // over `message`, which appends the full captured stderr — the failed step already
@@ -170,7 +173,7 @@ export async function initCommand(options: InitCommandOptions = {}) {
 
   let answers;
   try {
-    answers = await runPrompts(targetDir, { skipPrompts: options.yes, baseUrl: options.url });
+    answers = await runPrompts(targetDir, { skipPrompts: options.yes, baseUrl: options.url, state });
   } catch (err) {
     if (err instanceof MissingBaseUrlError) {
       console.error(chalk.red(`✖ ${err.message}`));
@@ -184,13 +187,22 @@ export async function initCommand(options: InitCommandOptions = {}) {
 
   let installDir = targetDir;
   let assistantGuideContent = "";
+  // Populated per-branch below, then combined with the AI-assistant file, MCP config, and
+  // reporting additions after all steps run — assembled into the undo manifest at the end.
+  let manifestMode: TestroidManifest["mode"] = "scaffold";
+  let added: string[] = [];
+  let packageJsonMerged = false;
+  let packageJsonAdded = { dependencies: [] as string[], devDependencies: [] as string[], scripts: [] as string[] };
 
   switch (state) {
-    case "empty":
-      await scaffoldProject(targetDir, answers);
+    case "empty": {
+      const result = await scaffoldProject(targetDir, answers);
       installDir = targetDir;
+      manifestMode = "scaffold";
+      added = result.added;
       assistantGuideContent = await generateAssistantGuide({ mode: "fresh", answers });
       break;
+    }
 
     case "playwright-only": {
       console.log(chalk.yellow("🔄 Existing Playwright project detected — syncing Testroid into it (no overwrites).\n"));
@@ -198,41 +210,58 @@ export async function initCommand(options: InitCommandOptions = {}) {
       // Scan the project's real state BEFORE sync copies anything in, so the generated
       // guide reflects what was actually already there, not the post-merge mix.
       const profile = await scanExistingProject(targetDir);
-      const { added, skipped } = await syncIntoExistingProject(targetDir, answers);
+      const syncResult = await syncIntoExistingProject(targetDir, answers);
 
-      assistantGuideContent = await generateAssistantGuide({ mode: "sync", profile, answers, added, skipped });
+      assistantGuideContent = await generateAssistantGuide({
+        mode: "sync",
+        profile,
+        answers,
+        added: syncResult.added,
+        skipped: syncResult.skipped
+      });
       installDir = targetDir;
+      manifestMode = "sync";
+      added = syncResult.added;
+      packageJsonMerged = true;
+      packageJsonAdded = syncResult.packageJsonAdded;
       break;
     }
 
-    case "playwright-cucumber":
+    case "playwright-cucumber": {
       console.log(
         chalk.yellow(
           "⚠️ Cucumber+Playwright detected. Automatic sync for this combination isn't built yet — " +
           "adding Testroid into a separate 'testroid/' subfolder to stay safe."
         )
       );
-      await scaffoldProject(`${targetDir}/testroid`, answers);
+      const result = await scaffoldProject(`${targetDir}/testroid`, answers);
       installDir = `${targetDir}/testroid`;
+      manifestMode = "scaffold";
+      added = result.added;
       assistantGuideContent = await generateAssistantGuide({ mode: "fresh", answers });
       break;
+    }
 
     case "unknown":
-    default:
+    default: {
       console.log(
         chalk.yellow(
           "⚠️ Couldn't confidently detect your project type. " +
           "Adding Testroid into a separate 'testroid/' subfolder to avoid overwriting anything."
         )
       );
-      await scaffoldProject(`${targetDir}/testroid`, answers);
+      const result = await scaffoldProject(`${targetDir}/testroid`, answers);
       installDir = `${targetDir}/testroid`;
+      manifestMode = "scaffold";
+      added = result.added;
       assistantGuideContent = await generateAssistantGuide({ mode: "fresh", answers });
       break;
+    }
   }
 
   console.log("");
-  await writeAiAssistantConfig(installDir, answers.aiAssistant, assistantGuideContent);
+  const aiAssistantFile = await writeAiAssistantConfig(installDir, answers.aiAssistant, assistantGuideContent);
+  if (aiAssistantFile) added = [...added, aiAssistantFile];
 
   const failures: StepFailure[] = [];
 
@@ -246,22 +275,50 @@ export async function initCommand(options: InitCommandOptions = {}) {
   );
 
   console.log("");
-  await runTrackedStep(
+  const reportingResult = await runTrackedStep(
     failures,
     "reporting setup",
     getReportingManualInstallCommand(answers.reportChoice),
     () => configureReporting(installDir, answers.reportChoice)
   );
 
+  let mcpResult: McpInstallResult | undefined;
   if (answers.installPlaywrightMcp) {
     console.log("");
-    await runTrackedStep(
+    mcpResult = await runTrackedStep(
       failures,
       "Playwright MCP setup",
       MCP_INSTALL_MANUAL_COMMAND,
       () => installPlaywrightMcp(installDir)
     );
   }
+
+  if (mcpResult?.config.configCreated) added = [...added, ".mcp.json"];
+
+  await writeManifest(installDir, {
+    testroidVersion: resolveTestroidVersion(),
+    createdAt: new Date().toISOString(),
+    mode: manifestMode,
+    added,
+    packageJson: {
+      merged: packageJsonMerged,
+      added: {
+        dependencies: packageJsonAdded.dependencies,
+        devDependencies: [
+          ...packageJsonAdded.devDependencies,
+          ...(mcpResult?.packageAdded ? [MCP_PACKAGE] : []),
+          ...(reportingResult?.packagesAdded ?? [])
+        ],
+        scripts: [...packageJsonAdded.scripts, ...(reportingResult?.scriptsAdded ?? [])]
+      }
+    },
+    mcp: answers.installPlaywrightMcp && mcpResult
+      ? { configCreated: mcpResult.config.configCreated, configEntryAdded: mcpResult.config.configEntryAdded }
+      : null,
+    reporting: reportingResult
+      ? { choice: answers.reportChoice, configEntriesAdded: reportingResult.configEntriesAdded }
+      : null
+  });
 
   if (failures.length === 0) {
     printSuccessBanner();

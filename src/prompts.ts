@@ -2,6 +2,7 @@ import prompts from "prompts";
 import fs from "fs-extra";
 import path from "path";
 import type { AiAssistantChoice } from "./aiConfig";
+import { detectProjectName, type ProjectState } from "./detect";
 
 const AI_ASSISTANT_CHOICES: Array<{ title: string; value: AiAssistantChoice }> = [
   { title: "Claude Code", value: "claude-code" },
@@ -37,6 +38,12 @@ export interface RunPromptsOptions {
    * above the check below for why it can't be defaulted the way every other field is.
    */
   baseUrl?: string;
+  /**
+   * Current project state (from detectProjectState). Determines whether "Project name?" is
+   * asked at all — see the comment above isSync below for why "playwright-only" (sync) skips
+   * it entirely rather than just pre-filling a default.
+   */
+  state: ProjectState;
 }
 
 export interface PromptAnswers {
@@ -131,14 +138,21 @@ async function detectExistingAiAssistant(targetDir: string): Promise<AiAssistant
   return undefined;
 }
 
-export async function runPrompts(targetDir: string, options: RunPromptsOptions = {}): Promise<PromptAnswers> {
-  const { skipPrompts = false, baseUrl } = options;
+export async function runPrompts(targetDir: string, options: RunPromptsOptions): Promise<PromptAnswers> {
+  const { skipPrompts = false, baseUrl, state } = options;
+
+  // Syncing never touches an existing project's package.json "name" (could break CI,
+  // publishing, workspace references that depend on it) — so there's nothing meaningful for
+  // "Project name?" to configure, and asking it would be misleading. The label used for
+  // .env's PROJECT_NAME and CLAUDE.md's project callout is derived instead, below.
+  const isSync = state === "playwright-only";
 
   const existing = await readExistingEnv(targetDir);
   const hasExistingPlaywrightMcp = await detectExistingPlaywrightMcp(targetDir);
   const configuredReporter = await detectConfiguredReporter(targetDir);
   const detectedAiAssistant = await detectExistingAiAssistant(targetDir);
   const detectedBaseUrl = await detectExistingBaseUrl(targetDir, existing);
+  const derivedProjectName = isSync ? await detectProjectName(targetDir) : undefined;
 
   if (skipPrompts) {
     // Every other field below has a safe, generic fallback (a placeholder project name,
@@ -162,7 +176,7 @@ export async function runPrompts(targetDir: string, options: RunPromptsOptions =
       : ENVIRONMENT_CHOICES[0].value;
 
     return {
-      projectName: existing.PROJECT_NAME ?? "my-testroid-project",
+      projectName: isSync ? (derivedProjectName as string) : (existing.PROJECT_NAME ?? "my-testroid-project"),
       baseUrl: resolvedBaseUrl,
       suiteType,
       environment,
@@ -180,13 +194,19 @@ export async function runPrompts(targetDir: string, options: RunPromptsOptions =
     };
   }
 
-  const answers = await prompts([
-    {
+  const questions: prompts.PromptObject[] = [];
+
+  // Skipped entirely (not just pre-filled) for sync — see isSync's comment above.
+  if (!isSync) {
+    questions.push({
       type: "text",
       name: "projectName",
       message: "Project name?",
       initial: existing.PROJECT_NAME ?? "my-testroid-project"
-    },
+    });
+  }
+
+  questions.push(
     {
       type: "text",
       name: "baseUrl",
@@ -244,7 +264,14 @@ export async function runPrompts(targetDir: string, options: RunPromptsOptions =
       choices: REPORT_CHOICES,
       initial: configuredReporter === "ortoni" ? 1 : 0
     }
-  ]);
+  );
 
-  return answers as PromptAnswers;
+  const answers = await prompts(questions);
+
+  return {
+    ...answers,
+    // Not asked for sync (see isSync above) — the prompts() call above never sets this key
+    // in that case, so it's filled in from the derived label instead.
+    projectName: isSync ? (derivedProjectName as string) : answers.projectName
+  } as PromptAnswers;
 }

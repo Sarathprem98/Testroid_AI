@@ -64,14 +64,16 @@ async function getInstalledDeps(targetDir: string): Promise<Record<string, strin
   return { ...pkg.dependencies, ...pkg.devDependencies };
 }
 
-async function ensurePackagesInstalled(targetDir: string, choice: ReportChoice): Promise<void> {
+/** Returns the package names actually installed this call (a subset of `required`) — empty
+ * if everything was already present and nothing was touched. */
+async function ensurePackagesInstalled(targetDir: string, choice: ReportChoice): Promise<string[]> {
   const required = PACKAGES_BY_CHOICE[choice];
   const installed = await getInstalledDeps(targetDir);
   const missing = required.filter((pkg) => !(pkg in installed));
 
   if (missing.length === 0) {
     console.log(chalk.dim(`⏭️  ${required.join(", ")} already installed — skipping`));
-    return;
+    return [];
   }
 
   const versionedSpecifiers = missing.map((pkg) => `${pkg}@${PACKAGE_VERSIONS[pkg]}`);
@@ -89,6 +91,7 @@ async function ensurePackagesInstalled(targetDir: string, choice: ReportChoice):
       stdin: "ignore"
     });
     spinner.succeed(chalk.green(`${versionedSpecifiers.join(", ")} installed`));
+    return missing;
   } catch (err) {
     spinner.fail(chalk.red("Install failed — please run it manually:"));
     console.error(chalk.dim(`   npm install -D ${versionedSpecifiers.join(" ")}`));
@@ -98,21 +101,24 @@ async function ensurePackagesInstalled(targetDir: string, choice: ReportChoice):
   }
 }
 
-async function ensureAllureScript(targetDir: string): Promise<void> {
+/** Returns true if "report:allure" was actually added this call — false if it was already
+ * present, or there's no package.json to add it to. */
+async function ensureAllureScript(targetDir: string): Promise<boolean> {
   const pkgPath = path.join(targetDir, "package.json");
-  if (!(await fs.pathExists(pkgPath))) return;
+  if (!(await fs.pathExists(pkgPath))) return false;
 
   const pkg = await fs.readJson(pkgPath).catch(() => undefined);
-  if (!pkg) return;
+  if (!pkg) return false;
 
   if (pkg.scripts?.["report:allure"]) {
     console.log(chalk.dim('⏭️  "report:allure" script already present — not touched'));
-    return;
+    return false;
   }
 
   pkg.scripts = { ...pkg.scripts, "report:allure": REPORT_ALLURE_SCRIPT };
   await fs.writeJson(pkgPath, pkg, { spaces: 2 });
   console.log(chalk.green('✅ Added "report:allure" script to package.json (run after tests to view the Allure report)'));
+  return true;
 }
 
 /**
@@ -154,6 +160,17 @@ function findReporterArrayRange(source: string): { start: number; end: number } 
   return null;
 }
 
+/** Strips any existing allure/ortoni reporter entries out of a `reporter: [...]` array's
+ * body — shared by upsertReporterEntries (which then appends the chosen tool's entries)
+ * and removeReporterEntries (which stops here, for undo). */
+function stripKnownReporterEntries(body: string, patterns: RegExp[]): string {
+  let result = body;
+  for (const pattern of patterns) {
+    result = result.replace(pattern, "");
+  }
+  return result.replace(/\n[ \t]*\n+/g, "\n"); // collapse blank lines left behind by removals
+}
+
 /**
  * Rewrites only the contents of the `reporter: [...]` array: removes any existing
  * allure/ortoni entries (so switching choices is idempotent) and appends the chosen
@@ -164,12 +181,10 @@ function upsertReporterEntries(source: string, choice: ReportChoice): string | n
   const range = findReporterArrayRange(source);
   if (!range) return null;
 
-  let body = source.slice(range.start + 1, range.end);
-
-  for (const pattern of [...ALLURE_ENTRY_PATTERNS, ...ORTONI_ENTRY_PATTERNS]) {
-    body = body.replace(pattern, "");
-  }
-  body = body.replace(/\n[ \t]*\n+/g, "\n"); // collapse blank lines left behind by removals
+  let body = stripKnownReporterEntries(source.slice(range.start + 1, range.end), [
+    ...ALLURE_ENTRY_PATTERNS,
+    ...ORTONI_ENTRY_PATTERNS,
+  ]);
 
   body = body.replace(/\s+$/, "");
   if (body.trim().length > 0 && !body.trimEnd().endsWith(",")) {
@@ -182,11 +197,13 @@ function upsertReporterEntries(source: string, choice: ReportChoice): string | n
   return source.slice(0, range.start + 1) + body + source.slice(range.end);
 }
 
-async function updatePlaywrightConfigReporter(targetDir: string, choice: ReportChoice): Promise<void> {
+/** Returns true if reporter entries were actually written this call (false if there was no
+ * playwright.config.ts, or no `reporter: [...]` array was found in it). */
+async function updatePlaywrightConfigReporter(targetDir: string, choice: ReportChoice): Promise<boolean> {
   const configPath = path.join(targetDir, "playwright.config.ts");
   if (!(await fs.pathExists(configPath))) {
     console.log(chalk.dim("⏭️  No playwright.config.ts found — skipping reporter wiring"));
-    return;
+    return false;
   }
 
   const source = await fs.readFile(configPath, "utf8");
@@ -199,25 +216,59 @@ async function updatePlaywrightConfigReporter(targetDir: string, choice: ReportC
         `Add the ${choice === "allure" ? "allure-playwright" : "ortoni-report"} reporter manually if you want it wired in.`
       )
     );
-    return;
+    return false;
   }
 
   await fs.writeFile(configPath, updated);
   console.log(chalk.green(`✅ Wired ${choice === "allure" ? "Allure Report" : "Ortoni Report"} into playwright.config.ts's reporter array`));
+  return true;
 }
 
-export async function configureReporting(targetDir: string, choice: ReportChoice): Promise<void> {
-  await ensurePackagesInstalled(targetDir, choice);
+/** Removes just the chosen tool's reporter entries from playwright.config.ts's `reporter:
+ * [...]` array, leaving everything else in the file (and the array) untouched — used by
+ * `testroid undo` when those entries were merged into a playwright.config.ts that already
+ * existed before Testroid touched it (a freshly-created config is deleted outright instead,
+ * never via this). No-op if there's no playwright.config.ts or no reporter array. */
+export async function removeReporterEntries(targetDir: string, choice: ReportChoice): Promise<void> {
+  const configPath = path.join(targetDir, "playwright.config.ts");
+  if (!(await fs.pathExists(configPath))) return;
 
+  const source = await fs.readFile(configPath, "utf8");
+  const range = findReporterArrayRange(source);
+  if (!range) return;
+
+  const patterns = choice === "allure" ? ALLURE_ENTRY_PATTERNS : ORTONI_ENTRY_PATTERNS;
+  const body = stripKnownReporterEntries(source.slice(range.start + 1, range.end), patterns);
+  const updated = source.slice(0, range.start + 1) + body + source.slice(range.end);
+
+  await fs.writeFile(configPath, updated);
+}
+
+export interface ReportingResult {
+  /** package.json devDependency keys newly installed this run (empty if already present). */
+  packagesAdded: string[];
+  /** package.json script keys newly added this run — currently only ever "report:allure". */
+  scriptsAdded: string[];
+  /** True = reporter entries were actually written into playwright.config.ts's reporter
+   * array this run (false if there was no config file, or no reporter array found in it). */
+  configEntriesAdded: boolean;
+}
+
+export async function configureReporting(targetDir: string, choice: ReportChoice): Promise<ReportingResult> {
+  const packagesAdded = await ensurePackagesInstalled(targetDir, choice);
+
+  const scriptsAdded: string[] = [];
   if (choice === "allure") {
-    await ensureAllureScript(targetDir);
+    if (await ensureAllureScript(targetDir)) scriptsAdded.push("report:allure");
   }
 
-  await updatePlaywrightConfigReporter(targetDir, choice);
+  const configEntriesAdded = await updatePlaywrightConfigReporter(targetDir, choice);
 
   if (choice === "ortoni") {
     console.log(chalk.dim("ℹ️  Ortoni Report opens automatically after each local test run (skipped in CI)."));
   } else {
     console.log(chalk.dim('ℹ️  Allure Report can\'t auto-open (it needs a local server) — run "npm run report:allure" after tests to generate + view it.'));
   }
+
+  return { packagesAdded, scriptsAdded, configEntriesAdded };
 }
