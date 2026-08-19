@@ -1,6 +1,6 @@
 {
   "name": "testroid",
-  "version": "1.6.0",
+  "version": "1.6.1",
   "description": "AI-powered multi-agent Playwright test framework generator",
   "main": "dist/cli.js",
   "bin": {
