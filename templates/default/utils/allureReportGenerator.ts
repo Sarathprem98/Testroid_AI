@@ -1,5 +1,6 @@
 import type { Reporter } from '@playwright/test/reporter';
 import { spawnSync } from 'child_process';
+import fs from 'fs';
 import path from 'path';
 import { logger } from './logger';
 
@@ -27,6 +28,16 @@ export default class AllureReportGenerator implements Reporter {
   onEnd(): void {
     const resultsDir = path.resolve(__dirname, '..', 'allure-results');
     const reportDir = path.resolve(__dirname, '..', 'allure-report');
+
+    // allure-playwright (the reporter ahead of this one in the array) only ever writes into
+    // resultsDir when a test actually ran — an empty/missing dir means 0 tests found or every
+    // test was skipped, the same expected-empty-run state ortoniAutoOpenReporter.ts guards
+    // against. Running `allure generate` against nothing would just log a spurious "failed"
+    // line below for a run that never had anything to report in the first place.
+    if (!fs.existsSync(resultsDir) || fs.readdirSync(resultsDir).length === 0) {
+      console.log('ℹ️  No Allure report to generate — no tests ran (0 tests found or all tests were skipped).');
+      return;
+    }
 
     const generateCmd = [
       quote(allureBin),

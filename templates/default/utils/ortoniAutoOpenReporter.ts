@@ -1,5 +1,6 @@
-import type { Reporter } from '@playwright/test/reporter';
+import type { Reporter, TestCase, TestResult } from '@playwright/test/reporter';
 import { spawn } from 'child_process';
+import fs from 'fs';
 import path from 'path';
 import { logger } from './logger';
 
@@ -22,6 +23,19 @@ interface OrtoniAutoOpenOptions {
 export default class OrtoniAutoOpenReporter implements Reporter {
   constructor(private options: OrtoniAutoOpenOptions = {}) {}
 
+  // Tests that actually ran (i.e. not skipped) — the same signal Ortoni itself effectively
+  // uses to decide whether there's anything worth reporting. Zero of these is exactly the
+  // "0 tests found or all tests were skipped" case ortoni-report itself calls out via its own
+  // "Report generation skipped due to error in Playwright worker!" console line, and the
+  // reason index.html never gets written. Left at 0 (its safe default) if onTestEnd never
+  // fires at all — e.g. Playwright bails out before running anything — which correctly falls
+  // into the same "nothing to report" branch below rather than a false failure alarm.
+  private ranCount = 0;
+
+  onTestEnd(_test: TestCase, result: TestResult): void {
+    if (result.status !== 'skipped') this.ranCount++;
+  }
+
   async onExit(): Promise<void> {
     if (process.env.CI) return;
 
@@ -33,6 +47,21 @@ export default class OrtoniAutoOpenReporter implements Reporter {
     const folderPath = this.options.folderPath ?? 'ortoni-report';
     const filename = this.options.filename ?? 'index.html';
     const reportPath = path.resolve(process.cwd(), folderPath, filename);
+
+    if (!fs.existsSync(reportPath)) {
+      if (this.ranCount === 0) {
+        // Expected, normal state — e.g. a fresh scaffold with no specs written yet. Not an
+        // error, so plain console output rather than the logger's warning-shaped format.
+        console.log('ℹ️  No Ortoni report to open — no tests ran (0 tests found or all tests were skipped).');
+      } else {
+        // Tests genuinely ran, so a missing report is a real anomaly, not an empty-run
+        // no-op — surface it distinctly rather than silently swallowing it like the case above.
+        logger.application.testExecution(
+          `Ortoni report file wasn't found even though ${this.ranCount} test(s) ran — check the console output above for why report generation may have failed.`
+        );
+      }
+      return;
+    }
 
     try {
       if (process.platform === 'win32') {
